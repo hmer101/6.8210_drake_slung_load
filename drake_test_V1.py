@@ -51,7 +51,7 @@ visualizer = ModelVisualizer(meshcat=meshcat)
 visualizer.parser().AddModelFromFile(sdf_path)
 visualizer.Run(loop_once=not running_as_notebook)
 
-# HACK TO KEEP OPEN
+# HACK TO KEEP OPEN I guess this works
 while True:
     pass
 
