@@ -42,6 +42,10 @@ from pydrake.all import (
     RigidTransform,
     plot_system_graphviz)
 
+from pydrake.examples import (
+    StabilizingLQRController,
+)
+
 from underactuated import running_as_notebook, FindResource
 from underactuated.scenarios import AddFloatingRpyJoint
 
@@ -53,6 +57,8 @@ from underactuated.scenarios import AddFloatingRpyJoint
 # dir_path = os.path.dirname(os.path.realpath(__file__))
 # print(dir_path)
 # 4. Commented out Gazebo plugins because those tags are unsupported elements
+# 5. Set all rotor "joints" from "revolute" to "fixed". Propellers will be modeled with propeller class, unlike in Gazebo. 
+# If joints are kept as revolute, the number of states will be 20 (x,y,z,r,p,yaw,and velocities (12) plus position, velocity of rotors x4 (8))
 
 # HOW THE DEFAULT.SDF FILE WAS CHANGED_notebook
 # 1. Changed all <uri> tags under <include> to not just be the name of the file but /home/bilab/6.8210_project/sdf_models/models/x500 (for example, instead of just x500)
@@ -91,10 +97,17 @@ prop_info = [
     PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
 ]
 
+
 propellers = builder.AddSystem(Propeller(prop_info))
 builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port(),)
 builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port(),)
 builder.ExportInput(propellers.get_command_input_port(), "u")
+
+# LQR Controller 
+# Note: All joints in sdf file changed from "revolute" to "fixed". Number of continuous states should be 12
+context = plant.CreateDefaultContext()
+context.SetContinuousState(np.zeros([12, 1]))
+print(plant.gravity)
 
 diagram = builder.Build()
 diagram.set_name("diagram")
@@ -102,11 +115,11 @@ diagram.set_name("diagram")
 # Note: had to "sudo apt install graphviz" because I got [Errno 2] "dot" not found in path
 # Added matplotlib.use('TkAgg') to block of imports above
 # Ran sudo apt-get install python3-tk to get the plots to show
-plt.figure(figsize=(20,10))
-plot_system_graphviz(diagram)
-plt.show()
+# plt.figure(figsize=(20,10))
+# plot_system_graphviz(diagram)
+# plt.show()
 
-print('hello')
+# print('hello')
 
 
 # visualizer = ModelVisualizer(meshcat=meshcat)

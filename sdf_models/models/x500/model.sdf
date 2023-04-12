@@ -290,7 +290,7 @@
         </surface>
       </collision>
     </link>
-    <joint name="rotor_0_joint" type="revolute">
+    <joint name="rotor_0_joint" type="fixed">
       <parent>base_link</parent>
       <child>rotor_0</child>
       <axis>
@@ -363,7 +363,7 @@
         </surface>
       </collision>
     </link>
-    <joint name="rotor_1_joint" type="revolute">
+    <joint name="rotor_1_joint" type="fixed">
       <parent>base_link</parent>
       <child>rotor_1</child>
       <axis>
@@ -436,7 +436,7 @@
         </surface>
       </collision>
     </link>
-    <joint name="rotor_2_joint" type="revolute">
+    <joint name="rotor_2_joint" type="fixed">
       <parent>base_link</parent>
       <child>rotor_2</child>
       <axis>
@@ -509,7 +509,7 @@
         </surface>
       </collision>
     </link>
-    <joint name="rotor_3_joint" type="revolute">
+    <joint name="rotor_3_joint" type="fixed">
       <parent>base_link</parent>
       <child>rotor_3</child>
       <axis>
