@@ -61,8 +61,8 @@ from underactuated.scenarios import AddFloatingRpyJoint
 # Start the visualizer (run this cell only once, each instance consumes a port)
 meshcat = StartMeshcat()
 
-# sdf_path = 'sdf_models/worlds/default.sdf'
-sdf_path = 'sdf_models/models/x500/model.sdf'
+sdf_path = 'sdf_models/worlds/default.sdf'
+#sdf_path = 'sdf_models/models/x500/model.sdf'
 # sdf_path = 'sdf_models/models/tether/model.sdf'
 # sdf_path = 'sdf_models/models/load_generic/model.sdf'
 
@@ -73,49 +73,49 @@ parser = Parser(plant)
 model_instance = parser.AddModelFromFile(sdf_path)
 
 # By default multibody has a quaternion floating base, so we manually add a floating roll pitch yaw joint to match QuadrotorPlant
-AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link"), model_instance, use_ball_rpy=False)
+#AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link"), model_instance, use_ball_rpy=False)
 plant.Finalize()
 
 # Add propellers
-body_index = plant.GetBodyByName("base_link").index()
+#body_index = plant.GetBodyByName("base_link").index()
 # Default parameters from quadrotor_plant.cc:
 L = 0.174  # Length for arms (m)
 kF = 1.0  # Force input constant.
 kM = 0.0245  # Moment input constant.
 
 # Note: Rotors 0 and 1 rotate one way and rotors 2 and 3 rotate the other.
-prop_info = [
-    PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, kM), # rotor 0
-    PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, kM), # rotor 1
-    PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, -kM), # rotor 2 cw
-    PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
-]
+# prop_info = [
+#     PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, kM), # rotor 0
+#     PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, kM), # rotor 1
+#     PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, -kM), # rotor 2 cw
+#     PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
+# ]
 
-propellers = builder.AddSystem(Propeller(prop_info))
-builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port(),)
-builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port(),)
-builder.ExportInput(propellers.get_command_input_port(), "u")
+# propellers = builder.AddSystem(Propeller(prop_info))
+# builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port(),)
+# builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port(),)
+# builder.ExportInput(propellers.get_command_input_port(), "u")
 
-diagram = builder.Build()
-diagram.set_name("diagram")
+# diagram = builder.Build()
+# diagram.set_name("diagram")
 
 # Note: had to "sudo apt install graphviz" because I got [Errno 2] "dot" not found in path
 # Added matplotlib.use('TkAgg') to block of imports above
 # Ran sudo apt-get install python3-tk to get the plots to show
-plt.figure(figsize=(20,10))
-plot_system_graphviz(diagram)
-plt.show()
+# plt.figure(figsize=(20,10))
+# plot_system_graphviz(diagram)
+# plt.show()
 
-print('hello')
+# print('hello')
 
 
-# visualizer = ModelVisualizer(meshcat=meshcat)
-# visualizer.parser().AddModelFromFile(sdf_path)
-# visualizer.Run(loop_once=not running_as_notebook)
+visualizer = ModelVisualizer(meshcat=meshcat)
+visualizer.parser().AddModelFromFile(sdf_path)
+visualizer.Run(loop_once=not running_as_notebook)
 
-# # HACK TO KEEP OPEN I guess this works
-# while True:
-#     pass
+# HACK TO KEEP OPEN I guess this works
+while True:
+    pass
 
 meshcat.Delete()
 meshcat.DeleteAddedControls()
