@@ -182,26 +182,26 @@
 
       <!-- DRONES -->
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_1</name>
         <pose>1.5 0 .24 0 0 0</pose>
       </include>
 
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_2</name>
         <pose>-0.75 1.3 .24 0 0 0</pose>
       </include>
 
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_3</name>
         <pose>-0.75 -1.3 .24 0 0 0</pose>
       </include>
 
       <!-- LOAD -->
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/load_generic</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/load_generic</uri>
         <name>load</name>
         <pose>0 0 0.1 0 0 0</pose>
       </include>
@@ -209,7 +209,7 @@
       <!-- TETHERS AND CONNECTIONS -->
       <!-- Tether 1 -->
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/tether</uri>
         <name>tether_1</name>
         <pose>0 0 0.2 0 0 0</pose>
       </include>
@@ -229,7 +229,7 @@
 
       <!-- Tether 2 -->
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/tether</uri>
         <name>tether_2</name>
         <pose>0 0 0.2 0 0 2.09439510239</pose>
       </include>
@@ -248,7 +248,7 @@
 
       <!-- Tether 3 -->
       <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
+        <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/tether</uri>
         <name>tether_3</name>
         <pose>0 0 0.2 0 0 4.18879020479</pose>
       </include>

@@ -271,6 +271,11 @@ builder, controller = MakeQuadrotorController(diagram) #, drone_sys, propeller_s
 
 input('Press any key to end \n')
 
+input("Press [Enter] to simulate...")
+visualizer = ModelVisualizer(meshcat=meshcat)
+visualizer.parser().AddModelFromFile(sdf_path)
+visualizer.Run(loop_once=not running_as_notebook)
+input("Press [Enter] to exit...")
 meshcat.Delete()
 meshcat.DeleteAddedControls()
 
