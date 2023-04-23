@@ -63,3 +63,56 @@ else:
 
     fig, ax = plt.subplots()
     PPTrajectory.show_traj(z)
+
+
+
+
+
+# Solving for the remaining parameters
+tcount = 10
+g= 9.81
+def solve_for_states(z):
+
+    # x = zpp.eval(t) 
+    # xddot = zpp.eval(t, 2)
+
+    # xi = x[0:3] # quadrotor x,y,z
+    # phi_i = x[3] # quadrotor phi
+    # Tiqi = [0,0,0] # quadrotor tension vector (with direction)
+
+    m_i = 1 #quadrotor mass
+    J_i = np.eye(3)
+    e3 = np.array([0,0,1]) # z vector
+
+    # f_i = np.zeros(3) # output resultant force vector
+    # M_i = np.zeros(3) # output moment vector
+
+    prog = MathematicalProgram()
+    # fi = prog.NewContinuousVariables(tcount, name="fi")
+    fi = prog.NewContinuousVariables(tcount, 3, name="fi")
+    Ri = prog.NewContinuousVariables(tcount, 3, name="Ri")
+    Tiqi = prog.NewContinuousVariables(tcount, 3, name="Tiqi")
+
+
+    for t in range(tcount):
+
+        # Sum of forces
+        lhs = m_i*zpp.eval(t,2)[0:3]
+        rhs = np.dot(fi[t],np.dot(Ri[t],(e3))) - m_i*g*e3.T + Tiqi[t]
+        diff = lhs-rhs
+        prog.AddConstraint(lhs == rhs)
+        
+        # Sum of moments
+        # Ji * Omegadot_i + Omega_i x Ji*Omegai = SumOfMoments_i
+        # prog.AddLinearConstraint(J_i*zpp.eval())
+
+        # fi*Ri.dot(e3) = m_i*xddot + m_i*g*e3 + Tiqi
+    result = Solve(prog)
+    good = result.is_success()
+    print(good)
+    return good
+
+    print(result)
+
+
+solve_for_states(z)
