@@ -23,6 +23,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg') # Because I get error "Matplotlib is currently using agg, which is a non-GUI backend, so cannot show the figure.
 import matplotlib.pyplot as plt
+import time
 from IPython.display import HTML, display
 # pydrake imports
 from pydrake.all import (
@@ -52,7 +53,8 @@ from underactuated.scenarios import AddFloatingRpyJoint
 
 NAME_DRONE = "drone"
 NAME_PROPS = "propellers"
-NAME_DIAGRAM = "quad_diagram"
+NAME_DIAGRAM_QUAD = "quad_diagram"
+NAME_DIAGRAM_WITH_CONTROLLER = "quad_with_controller"
 
 
 # HOW THE x500 model SDF FILE WAS CHANGED
@@ -71,7 +73,7 @@ NAME_DIAGRAM = "quad_diagram"
 # 2. Commented out most of the first half of the world file (there can only be one model tag in the sdf file)
 
 
-def MakeMultibodyQuadrotor(sdf_path):
+def MakeMultibodyQuadrotor(sdf_path, meshcat):
     #sdf_path = 'sdf_models/worlds/default.sdf'
     #sdf_path = 'sdf_models/models/x500/model.sdf'
     # sdf_path = 'sdf_models/models/tether/model.sdf'
@@ -79,8 +81,14 @@ def MakeMultibodyQuadrotor(sdf_path):
 
     builder = DiagramBuilder()
 
-    plant = builder.AddSystem(MultibodyPlant(0.0))
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    #file_name = FindResource(sdf_path)
+    #Parser(plant).AddModelFromFile(file_name)
+    #plant.Finalize()
+
+    #plant = builder.AddSystem(MultibodyPlant(0.0))
     plant.set_name(NAME_DRONE)
+
 
     parser = Parser(plant)
     #ConfigureParser(parser)
@@ -108,18 +116,33 @@ def MakeMultibodyQuadrotor(sdf_path):
         PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
     ]
 
-
+    # Connect diagram
     propellers = builder.AddSystem(Propeller(prop_info))
     propellers.set_name(NAME_PROPS)
 
     builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port(),)
     builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port(),)
     builder.ExportInput(propellers.get_command_input_port(), "u")
+    builder.ExportOutput(plant.get_state_output_port(model_instance), "x500_0_x") # Not clarifying model_instance takes state from full plant
 
-    # diagram = builder.Build()
-    # diagram.set_name("quad_diagram")
 
-    return builder, plant
+    meshcat.Delete()
+    #meshcat.Set2dRenderMode(xmin=-2.5, xmax=2.5, ymin=-1.0, ymax=2.5)
+    MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
+
+    # Setup slider input
+    # meshcat.AddSlider('u', min=-30., max=30, step=.1, value=0.0)
+    # force_system = builder.AddSystem(MeshcatSliders(meshcat,['u']))
+    # builder.Connect(force_system.get_output_port(),
+    #                 plant.get_actuation_input_port())
+    #diagram = builder.Build()
+
+
+    # Build diagram
+    diagram = builder.Build()
+    diagram.set_name(NAME_DIAGRAM_QUAD)
+
+    return diagram, scene_graph #builder, plant
 
 
 def MakeQuadrotorController(diagram_plant_act): #, drone_sys, propeller_sys):
@@ -139,22 +162,22 @@ def MakeQuadrotorController(diagram_plant_act): #, drone_sys, propeller_sys):
 
         ## Set plant at linearization point
         # States
-        drone_cs = drone_context.get_continuous_state()
-        nq = drone_cs.num_q() # 7 with quaternion, 6 with RPY floating base
-        nv = drone_cs.num_v() # 6 
-        nz = drone_cs.num_z() # 0
+        # drone_cs = drone_context.get_continuous_state()
+        # nq = drone_cs.num_q() # 7 with quaternion, 6 with RPY floating base
+        # nv = drone_cs.num_v() # 6 
+        # nz = drone_cs.num_z() # 0
 
-        props_cs = prop_context.get_continuous_state()
-        nq_p = props_cs.num_q() # 0
-        nv_p = props_cs.num_v() # 0
-        nz_p = props_cs.num_z() # 0
+        # props_cs = prop_context.get_continuous_state()
+        # nq_p = props_cs.num_q() # 0
+        # nv_p = props_cs.num_v() # 0
+        # nz_p = props_cs.num_z() # 0
 
         drone_context.SetContinuousState([0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) # CORRECT ORDER?? change 2nd to 0
         #prop_context.SetContinuousState([0]) # Don't need to set linearization??
 
-        num_props = prop_sys.num_propellers()
+        #num_props = prop_sys.num_propellers()
 
-        print(diagram_context)
+        #print(diagram_context)
 
         # Inputs
         #diagram_plant_act.
@@ -177,9 +200,28 @@ def MakeQuadrotorController(diagram_plant_act): #, drone_sys, propeller_sys):
 
 
     lqr_controller = QuadrotorLQR(diagram_plant_act)
-    controller = builder.AddSystem(lqr_controller) # OUTPUT PROBABLY INCORRECT #StabilizingLQRController(plant, [0, 0, 1]))
-    builder.Connect(controller.get_output_port(0), plant.get_input_port(0)) # Are these the correct ports??
+
+    print(f"Controller: u = u0 - K(x-x0), with K={-lqr_controller.D()}") # This is tutorial syntax and appears to work??
+    #print(f"K={lqr_controller.K}") # This syntax in the documentation doesn't work????
+
+    ## Build diagram with plant and controller
+    builder = DiagramBuilder()
+
+    # Add systems
+    plant = builder.AddSystem(diagram_plant_act)
+    plant.set_name("Drone with props")
+    #plant.Finalize()
+
+    controller = builder.AddSystem(lqr_controller)
+    controller.set_name("x500_0 controller")
+
+    # Connect diagram
+    #controller = builder.AddSystem(lqr_controller) # OUTPUT PROBABLY INCORRECT #StabilizingLQRController(plant, [0, 0, 1]))
+    builder.Connect(controller.get_output_port(0), plant.get_input_port(0))
     builder.Connect(plant.get_output_port(0), controller.get_input_port(0))
+
+    # Build diagram
+    diagram = build_diagram(builder, "with controller test")
 
     # # Set up visualization in MeshCat
     # scene_graph = builder.AddSystem(SceneGraph())
@@ -192,7 +234,8 @@ def MakeQuadrotorController(diagram_plant_act): #, drone_sys, propeller_sys):
 
     # diagram = builder.Build()
 
-    return builder, controller
+    return diagram #builder, controller
+
 
 
 def build_diagram(builder, name):
@@ -227,30 +270,32 @@ def meshcat_visualize(): #builder
     visualizer.parser().AddModelFromFile(sdf_path)
     visualizer.Run(loop_once=not running_as_notebook)
 
-def simulate_diagram(diagram):
-    # Set up a simulator to run this diagram
-    simulator = Simulator(diagram)
-    simulator.set_target_realtime_rate(1.0 if running_as_notebook else 0.0)
-    context = simulator.get_mutable_context()
+# def simulate_diagram(diagram):
+#     # Set up a simulator to run this diagram
+#     simulator = Simulator(diagram)
+#     simulator.set_target_realtime_rate(1.0 if running_as_notebook else 0.0)
+#     context = simulator.get_mutable_context()
 
-    # Simulate
-    for i in range(5):
-        context.SetTime(0.)
-        context.SetContinuousState(0.5*np.random.randn(12,)) #13?
-        simulator.Initialize()
-        simulator.AdvanceTo(4.0 if running_as_notebook else 0.1)
+#     # Simulate
+#     for i in range(5):
+#         context.SetTime(0.)
+#         context.SetContinuousState(0.5*np.random.randn(12,)) #13?
+#         simulator.Initialize()
+#         simulator.AdvanceTo(4.0 if running_as_notebook else 0.1)
 
 
 # Start the visualizer (run this cell only once, each instance consumes a port)
 meshcat = StartMeshcat()
 
+#input('Press enter once meshcat open')
+
 # Make Quadrotor
 sdf_path = 'sdf_models/models/x500/model.sdf'
 #sdf_path = 'sdf_models/worlds/default.sdf'
-builder, plant = MakeMultibodyQuadrotor(sdf_path)
+diagram_quad, scene_graph = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
 # Make controller
-#builder, controller = MakeQuadrotorController(builder, plant)
+diagram_full = MakeQuadrotorController(diagram_quad)
 
 
 # # LQR Controller 
@@ -261,21 +306,60 @@ builder, plant = MakeMultibodyQuadrotor(sdf_path)
 # #print(plant.gravity)
 
 
-# Build and show diagram
-diagram = build_diagram(builder, NAME_DIAGRAM)
-#show_diagram(diagram)
-
-# Make controller
-builder, controller = MakeQuadrotorController(diagram) #, drone_sys, propeller_sys) #MakeQuadrotorController(builder, plant)
+# Show diagram
+#diagram = build_diagram(builder, NAME_DIAGRAM)
+#show_diagram(diagram_full)
 
 
-input('Press any key to end \n')
+# input("Press [Enter] to simulate...")
+# visualizer = ModelVisualizer(meshcat=meshcat)
+# visualizer.parser().AddModelFromFile(sdf_path)
+# visualizer.Run(loop_once=not running_as_notebook)
+# input("Press [Enter] to exit...")
+# meshcat.Delete()
+# meshcat.DeleteAddedControls()
 
-input("Press [Enter] to simulate...")
-visualizer = ModelVisualizer(meshcat=meshcat)
-visualizer.parser().AddModelFromFile(sdf_path)
-visualizer.Run(loop_once=not running_as_notebook)
-input("Press [Enter] to exit...")
-meshcat.Delete()
-meshcat.DeleteAddedControls()
+
+# Set up visualization in MeshCat
+# scene_graph = builder.AddSystem(SceneGraph())
+# QuadrotorGeometry.AddToBuilder(builder, plant.get_output_port(0), scene_graph)
+# meshcat.Delete()
+# meshcat.ResetRenderMode()
+# MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
+# # end setup for visualization
+
+# diagram = builder.Build()
+
+# Set up a simulator to run this diagram
+simulator = Simulator(diagram_full)
+simulator.set_target_realtime_rate(1.0) # if running_as_notebook else 0.0)
+context = simulator.get_mutable_context()
+
+
+input("Press [Enter] to set up simulation...")
+# Simulate
+# for i in range(5):
+#     context.SetTime(0.)
+#     context.SetContinuousState(0.5*np.random.randn(12,))
+#     simulator.Initialize()
+#     simulator.AdvanceTo(4.0)#  if running_as_notebook else 0.1)
+#     time.sleep(1)
+
+#if running_as_notebook:  # Then we're not just running as a test on CI.
+context.SetTime(0.)
+context.SetContinuousState(0.5*np.random.randn(12,))
+simulator.Initialize()
+simulator.set_target_realtime_rate(0.75) #1.0)
+#simulator.AdvanceTo(0.1)
+
+print("Press 'Stop Simulation' in MeshCat to continue.")
+meshcat.AddButton('Stop Simulation')
+
+input("Press [Enter] to progress...")
+#print('Use the slider in the MeshCat controls to apply elbow torque.')
+while meshcat.GetButtonClicks('Stop Simulation') < 1:
+    simulator.AdvanceTo(simulator.get_context().get_time() + 0.1) #simulator.get_context().get_time() + 1.0)
+    time.sleep(0.04)
+
+#input("Press [Enter] to exit...")
 
