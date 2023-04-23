@@ -66,10 +66,12 @@ visualizer = ModelVisualizer(meshcat=meshcat)
 visualizer.parser().AddModelFromFile(sdf_path)
 visualizer.Run(loop_once=not running_as_notebook)
 
-# HACK TO KEEP OPEN I guess this works
-while True:
-    pass
 
+input("Press [Enter] to simulate...")
+visualizer = ModelVisualizer(meshcat=meshcat)
+visualizer.parser().AddModelFromFile(sdf_path)
+visualizer.Run(loop_once=not running_as_notebook)
+input("Press [Enter] to exit...")
 meshcat.Delete()
 meshcat.DeleteAddedControls()
 
