@@ -27,7 +27,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-*.sdf
+# SDF File location issues
+sdf_models/models/x500/model.sdf
+sdf_models/worlds/default.sdf
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

@@ -24,7 +24,7 @@
           <mesh>
             <scale>1 1 1</scale>
             <!--<uri>model://x500/meshes/NXP-HGD-CF.dae</uri>-->
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/NXP-HGD-CF.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/NXP-HGD-CF.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -33,7 +33,7 @@
         <geometry>
           <mesh>model:/
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -42,7 +42,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -51,7 +51,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -60,7 +60,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Base.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -251,7 +251,7 @@
         <geometry>
           <mesh>
             <scale>0.8461538461538461 0.8461538461538461 0.8461538461538461</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/1345_prop_ccw.stl</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/1345_prop_ccw.stl</uri>
           </mesh>
         </geometry>
         <material>
@@ -266,7 +266,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -324,7 +324,7 @@
         <geometry>
           <mesh>
             <scale>0.8461538461538461 0.8461538461538461 0.8461538461538461</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/1345_prop_ccw.stl</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/1345_prop_ccw.stl</uri>
           </mesh>
         </geometry>
         <material>
@@ -339,7 +339,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -397,7 +397,7 @@
         <geometry>
           <mesh>
             <scale>0.8461538461538461 0.8461538461538461 0.8461538461538461</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/1345_prop_cw.stl</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/1345_prop_cw.stl</uri>
           </mesh>
         </geometry>
         <material>
@@ -412,7 +412,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -470,7 +470,7 @@
         <geometry>
           <mesh>
             <scale>0.8461538461538461 0.8461538461538461 0.8461538461538461</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/1345_prop_cw.stl</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/1345_prop_cw.stl</uri>
           </mesh>
         </geometry>
         <material>
@@ -485,7 +485,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
+            <uri>/Users/kevinbecker/courses/underactuated/6.8210_project/sdf_models/models/x500/meshes/5010Bell.dae</uri>
           </mesh>
         </geometry>
       </visual>
