@@ -15,7 +15,10 @@ from pydrake.all import(
     RigidTransform,
     DirectCollocation,
     PiecewisePolynomial,
-    Solve)
+    Solve,
+    FiniteHorizonLinearQuadraticRegulator,
+    FiniteHorizonLinearQuadraticRegulatorOptions,
+    MakeFiniteHorizonLinearQuadraticRegulator)
 
 from underactuated.scenarios import AddFloatingRpyJoint
 
@@ -92,36 +95,31 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     return diagram
 
 # Make a finite_horizon LQR controller for state regulation of the plant given in the input diagram
-def MakeQuadrotorController(diagram_plant):
-    def QuadrotorLQR(diagram_plant):
-        ## Setup
-        drone_sys = diagram_plant.GetSubsystemByName(NAME_DRONE)
-        prop_sys = diagram_plant.GetSubsystemByName(NAME_PROPS)
-        
+def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
+    def QuadrotorFiniteHorizonLQR(diagram_plant, options):
         # Create contexts
         diagram_context = diagram_plant.CreateDefaultContext()        
-        drone_context = drone_sys.GetMyContextFromRoot(diagram_context)
-        #prop_context = prop_sys.GetMyContextFromRoot(diagram_context)
 
-        ## Set plant at linearization point
-        # States
-        drone_context.SetContinuousState([0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
-        # Inputs
-        drone_mass = drone_sys.CalcTotalMass(drone_context)
-        g = drone_sys.gravity_field().kDefaultStrength
-        diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
-
-        ## Other parameters
+        # Q and R matrices
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
         R = np.diag([0.1, 0.1, 0.1, 0.1])
  
-        # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html
-        # or finiteHorizonLQR: https://drake.mit.edu/doxygen_cxx/structdrake_1_1systems_1_1controllers_1_1_finite_horizon_linear_quadratic_regulator_options.html
+        return MakeFiniteHorizonLinearQuadraticRegulator(
+            diagram_plant, 
+            diagram_context,
+            t0=options.u0.start_time(),
+            tf=options.u0.end_time(),
+            Q=Q,
+            R=R,
+            options=options
+        )
+    
+    # Set options
+    options = FiniteHorizonLinearQuadraticRegulatorOptions()
+    options.x0 = x_traj
+    options.u0 = u_traj
 
-        return LinearQuadraticRegulator(diagram_plant, diagram_context, Q, R)
-
-    lqr_controller = QuadrotorLQR(diagram_plant)
+    lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
     ## Build diagram with plant and controller
     builder = DiagramBuilder()
@@ -130,7 +128,7 @@ def MakeQuadrotorController(diagram_plant):
     plant = builder.AddSystem(diagram_plant)
     plant.set_name("Drone with props")
 
-    controller = builder.AddSystem(lqr_controller)
+    controller = builder.AddSystem(lqr_finite_horizon_controller)
     controller.set_name("x500_0 controller")
 
     # Connect diagram
@@ -228,17 +226,18 @@ def main():
     #sdf_path = 'sdf_models/worlds/default.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
+    # Generate example state and input trajectories
     x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)
     
     # Make controller
     diagram_full = MakeQuadrotorController(diagram_quad, x_trajectory, u_trajectory)
 
-    # # Show diagram
-    # utils.show_diagram(diagram_full)
+    # Show diagram
+    utils.show_diagram(diagram_full)
 
-    # # Simulate
-    # state_init = 0.5*np.random.randn(12,)
-    # utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
+    # Simulate
+    state_init = np.zeros(12,)
+    utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
 
 
 if __name__ == "__main__":
