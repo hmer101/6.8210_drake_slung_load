@@ -118,7 +118,7 @@ def MakeQuadrotorController(diagram_plant):
         return LinearQuadraticRegulator(diagram_plant, diagram_context, Q, R)
 
     lqr_controller = QuadrotorLQR(diagram_plant)
-
+    
     ## Build diagram with plant and controller
     builder = DiagramBuilder()
 
