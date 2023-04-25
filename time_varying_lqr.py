@@ -13,9 +13,11 @@ from pydrake.all import(
     Propeller,
     PropellerInfo,
     RigidTransform,
+    Linearize,
     DirectCollocation,
     PiecewisePolynomial,
     Solve,
+    MathematicalProgram,
     FiniteHorizonLinearQuadraticRegulator,
     FiniteHorizonLinearQuadraticRegulatorOptions,
     MakeFiniteHorizonLinearQuadraticRegulator)
@@ -31,7 +33,7 @@ NAME_DIAGRAM_WITH_CONTROLLER = "quad_with_controller"
 # HOW THE x500 model SDF FILE WAS CHANGED
 # 1. commented out the use_parent_model_frame for all joints
 # 2. wrote out whole path i.e. /home/bilab/6.8210_project/sdf_models/models/x500/meshes/1345_prop_ccw.stl
-# vs model://x500/meshes/1345_prop_ccw.stl
+# vs model://x500/meshes/1345_prop_ccw    dircol.AddDurationBounds(1.0, 10.0).stl
 # 3. These two lines were used to find the current path 
 # dir_path = os.path.dirname(os.path.realpath(__file__))
 # print(dir_path)
@@ -98,7 +100,10 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
     def QuadrotorFiniteHorizonLQR(diagram_plant, options):
         # Create contexts
-        diagram_context = diagram_plant.CreateDefaultContext()        
+        diagram_context = diagram_plant.CreateDefaultContext()
+
+        drone_lin = Linearize(diagram_plant, diagram_context)
+        print(type(drone_lin))        
 
         # Q and R matrices
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
@@ -189,36 +194,36 @@ def GenerateDirColTrajectory(diagram_plant):
     x_traj = dircol.ReconstructStateTrajectory(result)
     u_traj = dircol.ReconstructInputTrajectory(result)
 
-    # # Uncomment block below to visualize
-    # times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
-    # u_values = u_traj.vector_values(times)
-    # x_values = x_traj.vector_values(times)
-    # xyz_values = x_values[0:3, :]
-    # rpy_values = x_values[3:6, :]
-    # vxyz_values = x_values[6:9, :]
-    # vrpy_values = x_values[9:12, :]
+    # Uncomment block below to visualize
+    times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
+    u_values = u_traj.vector_values(times)
+    x_values = x_traj.vector_values(times)
+    xyz_values = x_values[0:3, :]
+    rpy_values = x_values[3:6, :]
+    vxyz_values = x_values[6:9, :]
+    vrpy_values = x_values[9:12, :]
 
-    # fig, ax = plt.subplots(3, 1)
-    # ax[0].plot(times, np.transpose(u_values), label=["Rotor 1", "Rotor 2", "Rotor 3", "Rotor 4"])
-    # ax[0].set_ylabel("Lift Force (kN?)")
-    # ax[0].legend()
+    fig, ax = plt.subplots(3, 1)
+    ax[0].plot(times, np.transpose(u_values), label=["Rotor 1", "Rotor 2", "Rotor 3", "Rotor 4"])
+    ax[0].set_ylabel("Lift Force (kN?)")
+    ax[0].legend()
 
-    # ax[1].plot(times, np.transpose(xyz_values), label=["x", "y", "z"])
-    # ax[1].set_ylabel("Position (m)")
-    # ax[1].legend()
+    ax[1].plot(times, np.transpose(xyz_values), label=["x", "y", "z"])
+    ax[1].set_ylabel("Position (m)")
+    ax[1].legend()
 
-    # ax[2].plot(times, np.transpose(vxyz_values), label=["vx", "vy", "vz"])
-    # ax[2].set_ylabel("Velocity (m/s)")
-    # ax[2].legend()
+    ax[2].plot(times, np.transpose(vxyz_values), label=["vx", "vy", "vz"])
+    ax[2].set_ylabel("Velocity (m/s)")
+    ax[2].legend()
 
-    # ax[2].set_xlabel("Time(s)")
-    # plt.show()
+    ax[2].set_xlabel("Time(s)")
+    plt.show()
 
     return x_traj, u_traj
 
 
 def main():
-    # # Start the visualizer (run this cell only once, each instance consumes a port)
+    # Start the visualizer (run this cell only once, each instance consumes a port)
     meshcat = StartMeshcat()
 
     # Make Quadrotor
