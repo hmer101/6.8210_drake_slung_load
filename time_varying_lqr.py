@@ -100,10 +100,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
     def QuadrotorFiniteHorizonLQR(diagram_plant, options):
         # Create contexts
-        diagram_context = diagram_plant.CreateDefaultContext()
-
-        drone_lin = Linearize(diagram_plant, diagram_context)
-        print(type(drone_lin))        
+        diagram_context = diagram_plant.CreateDefaultContext()  
 
         # Q and R matrices
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
@@ -119,10 +116,50 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
             options=options
         )
     
+    def QuadrotorLQR(diagram_plant):
+        ## Setup
+        drone_sys = diagram_plant.GetSubsystemByName(NAME_DRONE)
+        prop_sys = diagram_plant.GetSubsystemByName(NAME_PROPS)
+        
+        # Create contexts
+        diagram_context = diagram_plant.CreateDefaultContext()        
+        drone_context = drone_sys.GetMyContextFromRoot(diagram_context)
+        #prop_context = prop_sys.GetMyContextFromRoot(diagram_context)
+
+        ## Set plant at linearization point
+        # States
+        drone_context.SetContinuousState([2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        # Inputs
+        drone_mass = drone_sys.CalcTotalMass(drone_context)
+        g = drone_sys.gravity_field().kDefaultStrength
+        diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
+
+        # Linearize and get A and B matrices for LQR controller
+        input_i = diagram_plant.get_input_port().get_index()
+        output_i = diagram_plant.get_output_port().get_index()
+        drone_lin = Linearize(diagram_plant, diagram_context, input_port_index=input_i, output_port_index=output_i)
+        
+        A = drone_lin.A()
+        B = drone_lin.B()
+
+        ## Other parameters
+        Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
+        R = np.diag([0.1, 0.1, 0.1, 0.1])
+ 
+        # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html
+        # or finiteHorizonLQR: https://drake.mit.edu/doxygen_cxx/structdrake_1_1systems_1_1controllers_1_1_finite_horizon_linear_quadratic_regulator_options.html
+
+        return LinearQuadraticRegulator(A, B, Q, R)
+
+    # Get Qf from infinite horizon LQR controller
+    (K, S) = QuadrotorLQR(diagram_plant)
+    
     # Set options
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
     options.x0 = x_traj
     options.u0 = u_traj
+    options.Qf = 2*S
 
     lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
@@ -225,7 +262,6 @@ def GenerateDirColTrajectory(diagram_plant):
 def main():
     # Start the visualizer (run this cell only once, each instance consumes a port)
     meshcat = StartMeshcat()
-
     # Make Quadrotor
     sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
@@ -238,7 +274,7 @@ def main():
     diagram_full = MakeQuadrotorController(diagram_quad, x_trajectory, u_trajectory)
 
     # Show diagram
-    utils.show_diagram(diagram_full)
+    # utils.show_diagram(diagram_full)
 
     # Simulate
     state_init = np.zeros(12,)
@@ -246,4 +282,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()      
