@@ -240,21 +240,21 @@ def GenerateDirColTrajectory(diagram_plant):
     vxyz_values = x_values[6:9, :]
     vrpy_values = x_values[9:12, :]
 
-    fig, ax = plt.subplots(3, 1)
-    ax[0].plot(times, np.transpose(u_values), label=["Rotor 1", "Rotor 2", "Rotor 3", "Rotor 4"])
-    ax[0].set_ylabel("Lift Force (kN?)")
-    ax[0].legend()
+    # fig, ax = plt.subplots(3, 1)
+    # ax[0].plot(times, np.transpose(u_values), label=["Rotor 1", "Rotor 2", "Rotor 3", "Rotor 4"])
+    # ax[0].set_ylabel("Lift Force (kN?)")
+    # ax[0].legend()
 
-    ax[1].plot(times, np.transpose(xyz_values), label=["x", "y", "z"])
-    ax[1].set_ylabel("Position (m)")
-    ax[1].legend()
+    # ax[1].plot(times, np.transpose(xyz_values), label=["x", "y", "z"])
+    # ax[1].set_ylabel("Position (m)")
+    # ax[1].legend()
 
-    ax[2].plot(times, np.transpose(vxyz_values), label=["vx", "vy", "vz"])
-    ax[2].set_ylabel("Velocity (m/s)")
-    ax[2].legend()
+    # ax[2].plot(times, np.transpose(vxyz_values), label=["vx", "vy", "vz"])
+    # ax[2].set_ylabel("Velocity (m/s)")
+    # ax[2].legend()
 
-    ax[2].set_xlabel("Time(s)")
-    plt.show()
+    # ax[2].set_xlabel("Time(s)")
+    # plt.show()
 
     return x_traj, u_traj
 
