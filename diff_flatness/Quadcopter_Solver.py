@@ -1,9 +1,7 @@
-# Differential flatness example, generalized
-# https://deepnote.com/workspace/underactuated-spring-23-113f4536-6d5b-4452-8ff4-dbe26e376f5d/project/03-Acrobots-Cart-Poles-and-Quadrotors-Duplicate-04170733-cc60-4c08-a49f-fff1b894e7a4/notebook/acrobot-b68ee9f4eb0e43e988991e8da301f7df
-
 
 # Imports
 import math
+
 import matplotlib.pyplot as plt
 import mpld3
 import numpy as np
@@ -37,44 +35,25 @@ from underactuated import ConfigureParser, running_as_notebook
 from underactuated.meshcat_utils import MeshcatSliders
 from underactuated.quadrotor2d import Quadrotor2D, Quadrotor2DVisualizer
 
-
-
-import diff_flatness_example
-
 if running_as_notebook:
     mpld3.enable_notebook()
 
 
 
 
-
-# using radians
-def rotation_matrix(angles):
-    roll, pitch, yaw = angles
-    # Create rotation matrices for each axis
-    R_x = np.array([[1, 0, 0],
-                    [0, np.cos(roll), -np.sin(roll)],
-                    [0, np.sin(roll), np.cos(roll)]])
-    R_y = np.array([[np.cos(pitch), 0, np.sin(pitch)],
-                    [0, 1, 0],
-                    [-np.sin(pitch), 0, np.cos(pitch)]])
-    R_z = np.array([[np.cos(yaw), -np.sin(yaw), 0],
-                    [np.sin(yaw), np.cos(yaw), 0],
-                    [0, 0, 1]])
-
-    # Combine the rotation matrices
-    R = R_z @ R_y @ R_x
-
-    return R
+tcount = 100
+g= 9.81
 
 
-def solve_for_states(zpp):
+def solve_for_states(z):
 
     ###############################
     #  Information and constants  #
     ###############################
     # Z vector drone: [ xi yi zi rolli pitchi yawi ]
+
     # Z vector : [ xi yi zi yawi ]
+
     # How to pull from z:
     # x = zpp.eval(t) 
     # xddot = zpp.eval(t, 2)
@@ -97,8 +76,6 @@ def solve_for_states(zpp):
     #           Unknowns          #
     ###############################
     prog    = MathematicalProgram()
-    tcount = 100
-    g= 9.81
     u       = prog.NewContinuousVariables(tcount, 4, name="u_i")     # desired output of rotor i
     rpy_i    = prog.NewContinuousVariables(tcount, 3, name="RPi")   # roll, pitch of rotor i
     Omega_i = prog.NewContinuousVariables(tcount, 3, name="RPdoti")   # roll, pitch of rotor i
@@ -152,34 +129,34 @@ def solve_for_states(zpp):
 
     result = Solve(prog)
     good = result.is_success()
-
     if good:
+
+
         u_out = result.GetSolution(u)
         rpy_i_out = result.GetSolution(rpy_i)
         omega_i_out = result.GetSolution(Omega_i)
 
         return u_out, rpy_i_out, omega_i_out #, Tiqi_out
 
+ui, rpy_i, omega_i_out = solve_for_states(z)
+
+print (ui)
+print(rpy_i)
+print(omega_i_out)
 
 
-if __name__ == "__main__":
-    zpp = circle_example()
-    ui, rpy_i, omega_i_out = solve_for_states(zpp)
+x = zpp.eval(t)[0:3]
+xdot  = zpp.eval(t,1)[0:3]
 
-    print (ui)
-    print(rpy_i)
-    print(omega_i_out)
-
-    for t in range(tcount):
-        xyz    = zpp.eval(t)[0:3]
-        xyzdot = zpp.eval(t,1)[0:3]
-        rpy    = rpy_i[t]
-        rpydot    = omega_i_out[t]
-        u = ui
-        print(f"---------- t = {t} ----------")
-        print (f"x={xyz[0]}\t y={xyz[1]}\t z={xyz[2]}")
-        print (f"xd={xyzdot[0]}\t yd={xyzdot[0]}\t zd={xyzdot[0]}")
-        print (f"r={rpy[0]}\t p={rpy[1]}\t y={rpy[2]}")
-        print (f"rd={rpydot[0]}\t pd={rpydot[1]}\t yd={rpydot[2]}")
-        print (f"u= {u[0]}")
-
+for t in range(tcount):
+    xyz    = zpp.eval(t)[0:3]
+    xyzdot = zpp.eval(t,1)[0:3]
+    rpy    = rpy_i[t]
+    rpydot    = omega_i_out[t]
+    u = ui
+    print(f"---------- t = {t} ----------")
+    print (f"x={xyz[0]}\t y={xyz[1]}\t z={xyz[2]}")
+    print (f"xd={xyzdot[0]}\t yd={xyzdot[0]}\t zd={xyzdot[0]}")
+    print (f"r={rpy[0]}\t p={rpy[1]}\t y={rpy[2]}")
+    print (f"rd={rpydot[0]}\t pd={rpydot[1]}\t yd={rpydot[2]}")
+    print (f"u= {u[0]}")
