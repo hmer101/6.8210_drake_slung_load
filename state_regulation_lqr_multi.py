@@ -25,7 +25,7 @@ NAME_DIAGRAM_WITH_CONTROLLER = "quads_with_controller"
 
 GROUP_PREFIX = "swarm::"
 MODEL_PREFIX_DRONE = "x500_"
-NUM_DRONES = 3
+NUM_DRONES = 3 #1
 FIRST_DRONE_NUM = 1
 PROPS_PER_DRONE = 4
 
@@ -169,6 +169,7 @@ def MakeQuadrotorController(diagram_plant):
         drone_2 = [2.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         drone_3 = [0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+        #drone_context.SetContinuousState(drone_1)
         drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
 
         # Inputs
@@ -178,6 +179,7 @@ def MakeQuadrotorController(diagram_plant):
         single_drone_mass = drone_sys.CalcTotalMass(drone_context, [first_drone_instance])
         g = drone_sys.gravity_field().kDefaultStrength
 
+        #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1]))
         diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
 
@@ -194,13 +196,15 @@ def MakeQuadrotorController(diagram_plant):
 
         ## Other parameters
         Q_diag = [10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
+        #Q_comb = np.diag(Q_diag)
         Q_comb = np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
         #Q_alt = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
 
         R_diag = [0.1, 0.1, 0.1, 0.1]
+        #R_comb = np.diag(R_diag)
         R_comb = np.diag(R_diag + R_diag + R_diag)
-        #print(R_diag + R_diag + R_diag)
 
+        #print(R_diag + R_diag + R_diag)
         #R_alt = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         #A, B, C, D = Linearize(diagram_plant, diagram_context)
         #print(diagram_plant.num_inputs())
@@ -264,9 +268,9 @@ def main():
     drone_2 = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     drone_3 = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+    #state_init = drone_1
     state_init = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
 
-    #utils.simulate_diagram(diagram_quad, state_init, meshcat, realtime_rate=0.75)
     utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
 
 

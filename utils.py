@@ -57,9 +57,15 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     # Run simulation
     input("Press [Enter] to start simulation...")
     while meshcat.GetButtonClicks('Stop Simulation') < 1:
-        print("Looping")
+        print("Before advance")
+
+        
         simulator.AdvanceTo(simulator.get_context().get_time() + max_advance_time)
+
+
+        print("After advance")
         time.sleep(sleep_time)
+        print("After sleep")
 
 
 # Class to create a force mux LeafSystem that combines spatial forces applied to a multibody system
