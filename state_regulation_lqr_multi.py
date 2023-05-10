@@ -52,7 +52,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     ## Add quadrotor
     builder = DiagramBuilder()
 
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=1e-4) #time_step=0.0) #plant = builder.AddSystem(MultibodyPlant(0.0))
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0) #time_step=1e-4) #plant = builder.AddSystem(MultibodyPlant(0.0))
     plant.set_name(NAME_SWARM)
 
     parser = Parser(plant)
@@ -170,8 +170,8 @@ def MakeQuadrotorController(diagram_plant):
         drone_3 = [0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         #drone_context.SetContinuousState(drone_1)
-        #drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-        drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
+        drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
+        #drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
 
         # print(f'num_total: {drone_context.num_total_states()}')
         # print(f'num_cont: {drone_context.num_continuous_states()}')
@@ -201,9 +201,16 @@ def MakeQuadrotorController(diagram_plant):
 
 
         ## Other parameters
-        Q_diag = [10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
+        Q_diag = [.0, .0, .0, .0, .0, .0, .0, .0, .0, .1, .1, .1] #[10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
         #Q_comb = np.diag(Q_diag)
-        Q_comb = np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
+        Q_comb = np.diag([.00, .00, .00, 0, 0, 0, 
+                  .00, .00, .00, 0, 0, 0, 
+                  .00, .00, .00, 0, 0, 0, 
+                  .00, .00, .00, .1, .1, .1, 
+                  .00, .00, .00, .1, .1, .1,
+                  .00, .00, .00, .1, .1, .1]) 
+        
+        #np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
         #Q_alt = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
 
         R_diag = [0.1, 0.1, 0.1, 0.1]
@@ -255,7 +262,8 @@ def main():
     # Make Quadrotor
     #sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
-    sdf_path = 'sdf_models/worlds/default_commented.sdf'
+    #sdf_path = 'sdf_models/worlds/default_commented.sdf'
+    sdf_path = 'sdf_models/worlds/default_drones.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Show diagram

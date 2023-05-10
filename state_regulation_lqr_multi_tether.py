@@ -200,6 +200,9 @@ def MakeQuadrotorController(diagram_plant):
         load_mass = swarm_sys.CalcTotalMass(swarm_context, [load_instance])
         g = swarm_sys.gravity_field().kDefaultStrength
 
+        # print(f'Drone mass: {single_drone_mass}')
+        # print(f'Load mass: {load_mass}')
+
         diagram_plant.get_input_port().FixValue(diagram_context, (single_drone_mass+load_mass) * g / 4. * np.array([1, 1, 1, 1]))
         #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
