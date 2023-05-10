@@ -186,7 +186,7 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
 # Generates trajectories using direct collocation
 # Returns trajectory objects
 def GenerateDirColTrajectory(diagram_plant):
-    diagram_context = diagram_plant.CreateDefaultContext()        
+    diagram_context = diagram_plant.CreateDefaultContext()      
 
     dircol = DirectCollocation(
         diagram_plant,
@@ -265,16 +265,19 @@ def main():
     # Make Quadrotor
     sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
+    # sdf_path = 'sdf_models/worlds/default_onedronetest.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Generate example state and input trajectories
+    print("Making trajectories")
     x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)
     
     # Make controller
+    print("Making controller")
     diagram_full = MakeQuadrotorController(diagram_quad, x_trajectory, u_trajectory)
 
     # Show diagram
-    # utils.show_diagram(diagram_full)
+    utils.show_diagram(diagram_full)
 
     # Simulate
     state_init = np.zeros(12,)
