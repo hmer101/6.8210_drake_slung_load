@@ -46,7 +46,12 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     context = simulator.get_mutable_context()
 
     context.SetTime(0.)
-    context.SetContinuousState(state_init)
+
+    # Set initial state if one is provided
+    if state_init != None:
+        #context.SetContinuousState(state_init)
+        context.SetDiscreteState(state_init)
+
     simulator.Initialize()
 
     print("Press 'Stop Simulation' in MeshCat to continue.")
@@ -59,7 +64,7 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     while meshcat.GetButtonClicks('Stop Simulation') < 1:
         print("Before advance")
 
-        
+
         simulator.AdvanceTo(simulator.get_context().get_time() + max_advance_time)
 
 

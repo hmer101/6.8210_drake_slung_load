@@ -7,245 +7,20 @@
   <!-- Xacro to generate tether SDF -->
   <!-- Note: need to manually find and replace all references to 'continuous'
     with 'ball' in final SDF to get better tether-->
-  <link name="element_10">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_9">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_8">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_7">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_6">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_5">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_4">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_3">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
-  <link name="element_2">
-    <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <cylinder length="0.15" radius="0.01"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <geometry>
-        <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
-        <cylinder length="0.0001" radius="0.0001"/>
-      </geometry>
-      <!-- <surface>
-                    <contact>
-                        <collide_without_contact>true</collide_without_contact>
-                    </contact>
-                </surface> -->
-    </collision>
-  </link>
   <link name="element_1">
     <inertial>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1.9e-05" ixy="0" ixz="0" iyy="1.9e-05" iyz="0" izz="5.000000000000001e-07"/>
+      <origin rpy="0 1.5707963267948966 0" xyz="0.75 0 0"/>
+      <mass value="0.1"/>
+      <inertia ixx="0.018752500000000002" ixy="0" ixz="0" iyy="0.018752500000000002" iyz="0" izz="5e-06"/>
     </inertial>
     <visual>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
+      <origin rpy="0 1.5707963267948966 0" xyz="0.75 0 0"/>
       <geometry>
-        <cylinder length="0.15" radius="0.01"/>
+        <cylinder length="1.5" radius="0.01"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 1.5707963267948966 0" xyz="0.075 0 0"/>
+      <origin rpy="0 1.5707963267948966 0" xyz="0.75 0 0"/>
       <geometry>
         <!-- <cylinder length="${elem_length}" radius="${tether_radius}"/> -->
         <cylinder length="0.0001" radius="0.0001"/>
@@ -257,74 +32,11 @@
                 </surface> -->
     </collision>
   </link>
-  <joint name="joint_1_to_2" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_1"/>
-    <child link="element_2"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_2_to_3" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_2"/>
-    <child link="element_3"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_3_to_4" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_3"/>
-    <child link="element_4"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_4_to_5" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_4"/>
-    <child link="element_5"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_5_to_6" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_5"/>
-    <child link="element_6"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_6_to_7" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_6"/>
-    <child link="element_7"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_7_to_8" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_7"/>
-    <child link="element_8"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_8_to_9" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_8"/>
-    <child link="element_9"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
-  <joint name="joint_9_to_10" type="continuous">
-    <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_9"/>
-    <child link="element_10"/>
-    <dynamics damping="10.0" friction="0.0"/>
-  </joint>
   <link name="element_0">
     <inertial>
       <origin rpy="0 1.5707963267948966 0" xyz="0.005 0 0"/>
-      <mass value="0.0006666666666666666"/>
-      <inertia ixx="2.222222222222222e-08" ixy="0" ixz="0" iyy="2.222222222222222e-08" iyz="0" izz="3.3333333333333334e-08"/>
+      <mass value="0.0006666666666666668"/>
+      <inertia ixx="2.2222222222222224e-08" ixy="0" ixz="0" iyy="2.2222222222222224e-08" iyz="0" izz="3.333333333333334e-08"/>
     </inertial>
     <visual>
       <origin rpy="0 1.5707963267948966 0" xyz="0.005 0 0"/>
@@ -345,11 +57,11 @@
                 </surface> -->
     </collision>
   </link>
-  <link name="element_11">
+  <link name="element_2">
     <inertial>
       <origin rpy="0 1.5707963267948966 0" xyz="0.005 0 0"/>
-      <mass value="0.0006666666666666666"/>
-      <inertia ixx="2.222222222222222e-08" ixy="0" ixz="0" iyy="2.222222222222222e-08" iyz="0" izz="3.3333333333333334e-08"/>
+      <mass value="0.0006666666666666668"/>
+      <inertia ixx="2.2222222222222224e-08" ixy="0" ixz="0" iyy="2.2222222222222224e-08" iyz="0" izz="3.333333333333334e-08"/>
     </inertial>
     <visual>
       <origin rpy="0 1.5707963267948966 0" xyz="0.005 0 0"/>
@@ -376,11 +88,11 @@
     <parent link="element_0"/>
     <child link="element_1"/>
   </joint>
-  <joint name="joint_10_to_11" type="continuous">
+  <joint name="joint_1_to_2" type="continuous">
     <axis xyz="0. 1. 1."/>
-    <origin rpy="0 0 0" xyz="0.15 0 0"/>
-    <parent link="element_10"/>
-    <child link="element_11"/>
+    <origin rpy="0 0 0" xyz="1.5 0 0"/>
+    <parent link="element_1"/>
+    <child link="element_2"/>
   </joint>
   <!-- Define joints -->
   <!-- Add start element joint-->

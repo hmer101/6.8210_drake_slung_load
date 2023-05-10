@@ -52,7 +52,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     ## Add quadrotor
     builder = DiagramBuilder()
 
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=1e-4) #time_step=0.0) #plant = builder.AddSystem(MultibodyPlant(0.0))
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0) #plant = builder.AddSystem(MultibodyPlant(0.0))
     plant.set_name(NAME_SWARM)
 
     parser = Parser(plant)
@@ -66,15 +66,20 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     kM = 0.0245  # Moment input constant.
 
     ## Change frame for all drones in the group -> Use quaternions without this.
-    for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
-        next_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
-        next_drone_instance = plant.GetModelInstanceByName(next_drone_name)
-        #print(next_drone_name)
+    # for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
+    #     next_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
+    #     next_drone_instance = plant.GetModelInstanceByName(next_drone_name)
+    #     #print(next_drone_name)
 
-        # By default multibody has a quaternion floating base, so we manually add a floating roll pitch yaw joint to match QuadrotorPlant
-        # We set `use_ball_rpy` to false because the BallRpyJoint uses angular velocities instead of ṙ, ṗ, ẏ.
-        AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", next_drone_instance), next_drone_instance, use_ball_rpy=False)
-        #plant.Finalize()
+    #     # By default multibody has a quaternion floating base, so we manually add a floating roll pitch yaw joint to match QuadrotorPlant
+    #     # We set `use_ball_rpy` to false because the BallRpyJoint uses angular velocities instead of ṙ, ṗ, ẏ.
+    #     #AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", next_drone_instance), next_drone_instance, use_ball_rpy=False)
+    #     #plant.Finalize()
+
+    # Change frame for load
+    # load_name = GROUP_PREFIX + "load"
+    # load_instance = plant.GetModelInstanceByName(load_name)
+    # AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", load_instance), load_instance, use_ball_rpy=False)
 
     plant.Finalize()
 
@@ -103,10 +108,10 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 
     ## Add propellers
     for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
-        next_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
-        next_drone_instance = plant.GetModelInstanceByName(next_drone_name)
+        load_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
+        load_instance = plant.GetModelInstanceByName(load_name)
 
-        body_index = plant.GetBodyByName("base_link", next_drone_instance).index()
+        body_index = plant.GetBodyByName("base_link", load_instance).index()
 
         # Note: Rotors 0 and 1 rotate one way and rotors 2 and 3 rotate the other.
         prop_info = [
@@ -123,7 +128,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
         builder.Connect(propellers.get_output_port(0), force_concat_sys.get_input_port(i-1)) # Connect propeller outputs to force concatinator
         builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
 
-        builder.Connect(plant.get_state_output_port(next_drone_instance), output_mux.get_input_port(i-1))
+        builder.Connect(plant.get_state_output_port(load_instance), output_mux.get_input_port(i-1))
 
         #builder.ExportInput(propellers.get_command_input_port(), next_drone_name + "_u")
         #builder.ExportOutput(plant.get_state_output_port(next_drone_instance), next_drone_name + "_state")
@@ -152,7 +157,7 @@ def MakeQuadrotorController(diagram_plant):
     def QuadrotorLQR(diagram_plant):
         ## Setup
         # Get full drone sys
-        drone_sys = diagram_plant.GetSubsystemByName(NAME_SWARM)
+        swarm_sys = diagram_plant.GetSubsystemByName(NAME_SWARM)
 
         # # Get first drone instance
         # first_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + FIRST_DRONE_NUM
@@ -160,7 +165,7 @@ def MakeQuadrotorController(diagram_plant):
         
         # Create contexts
         diagram_context = diagram_plant.CreateDefaultContext()        
-        drone_context = drone_sys.GetMyContextFromRoot(diagram_context)
+        swarm_context = swarm_sys.GetMyContextFromRoot(diagram_context)
         #prop_context = prop_sys.GetMyContextFromRoot(diagram_context)
 
         ## Set plant at linearization point
@@ -168,22 +173,21 @@ def MakeQuadrotorController(diagram_plant):
         drone_1 = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         drone_2 = [2.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         drone_3 = [0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        
+
+        print(f'num_total: {swarm_context.num_total_states()}')
+        print(f'num_cont: {swarm_context.num_continuous_states()}')
 
         #drone_context.SetContinuousState(drone_1)
-        #drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-        drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-
-        # print(f'num_total: {drone_context.num_total_states()}')
-        # print(f'num_cont: {drone_context.num_continuous_states()}')
-        # print(f'num_disc: {drone_context.get_discrete_state().size()}') #num_discrete_state_groups
+        swarm_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
 
 
         # Inputs
         input_dim = NUM_DRONES*PROPS_PER_DRONE 
         drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
-        first_drone_instance = drone_sys.GetModelInstanceByName(drone_name)
-        single_drone_mass = drone_sys.CalcTotalMass(drone_context, [first_drone_instance])
-        g = drone_sys.gravity_field().kDefaultStrength
+        first_drone_instance = swarm_sys.GetModelInstanceByName(drone_name)
+        single_drone_mass = swarm_sys.CalcTotalMass(swarm_context, [first_drone_instance])
+        g = swarm_sys.gravity_field().kDefaultStrength
 
         #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1]))
         diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
@@ -254,8 +258,8 @@ def main():
 
     # Make Quadrotor
     #sdf_path = 'sdf_models/models/x500/model.sdf'
-    #sdf_path = 'sdf_models/worlds/default.sdf'
-    sdf_path = 'sdf_models/worlds/default_commented.sdf'
+    sdf_path = 'sdf_models/worlds/default.sdf'
+    #sdf_path = 'sdf_models/worlds/default_commented.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Show diagram
@@ -270,14 +274,16 @@ def main():
     # Simulate
     #state_init = 0.5*np.random.randn(12,)
 
-    drone_1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    drone_2 = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    drone_3 = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # drone_1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # drone_2 = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    # drone_3 = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     #state_init = drone_1
-    state_init = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
+    #state_init = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
+    #state_init
 
-    utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
+    #utils.simulate_diagram(diagram_quad, None, meshcat, realtime_rate=0.75)
+    utils.simulate_diagram(diagram_full, None, meshcat, realtime_rate=0.75)
 
 
 if __name__ == "__main__":
