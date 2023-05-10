@@ -172,9 +172,9 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         diagram_context = diagram_plant.CreateDefaultContext()  
 
         # Q and R matrices
-        Q = np.diag([0, 0, 0, 0.1, 0.1, 0.1, 
-                    0, 0, 0, 0.1, 0.1, 0.1,  
-                    0, 0, 0, 0.1, 0.1, 0.1,
+        Q = np.diag([0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
+                    0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
+                    0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1,
                     0, 0, 0, 10, 10, 10,
                     0, 0, 0, 10, 10, 10,
                     0, 0, 0, 10, 10, 10,])
@@ -194,22 +194,30 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
     
     def QuadrotorLQR(diagram_plant):
         ## Setup
-        drone_sys = diagram_plant.GetSubsystemByName(NAME_DRONE)
-        prop_sys = diagram_plant.GetSubsystemByName(NAME_PROPS)
+        drone_sys = diagram_plant.GetSubsystemByName(NAME_SWARM)
         
         # Create contexts
         diagram_context = diagram_plant.CreateDefaultContext()        
         drone_context = drone_sys.GetMyContextFromRoot(diagram_context)
-        #prop_context = prop_sys.GetMyContextFromRoot(diagram_context)
 
         ## Set plant at linearization point
         # States
-        drone_context.SetContinuousState([2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        final_state = np.asarray([2.0, 0.0, 2.0, 0.0, 0.0, 0.0]+
+                        [-2.0, 2.0, 2.0, 0.0, 0.0, 0.0]+
+                        [-2.0, -2.0, 2.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        drone_context.SetContinuousState(final_state)
 
         # Inputs
-        drone_mass = drone_sys.CalcTotalMass(drone_context)
+        input_dim = NUM_DRONES*PROPS_PER_DRONE 
+        drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
+        first_drone_instance = drone_sys.GetModelInstanceByName(drone_name)
+        single_drone_mass = drone_sys.CalcTotalMass(drone_context, [first_drone_instance])
         g = drone_sys.gravity_field().kDefaultStrength
-        diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
+
+        diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
 
         # Linearize and get A and B matrices for LQR controller
         input_i = diagram_plant.get_input_port().get_index()
@@ -219,16 +227,33 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         A = drone_lin.A()
         B = drone_lin.B()
 
+        print(A)
+        print(np.shape(A))
+        print(B)
+        print(np.shape(B))
+
+        ## Other parameters
+        Q = np.diag([0, 0, 0, 0.1, 0.1, 0.1, 
+                    0, 0, 0, 0.1, 0.1, 0.1,  
+                    0, 0, 0, 0.1, 0.1, 0.1,
+                    0, 0, 0, 10, 10, 10,
+                    0, 0, 0, 10, 10, 10,
+                    0, 0, 0, 10, 10, 10,])
+        R = np.diag([1, 1, 1, 1,
+                    1, 1, 1, 1,
+                    1, 1, 1, 1])
+ 
+
         return LinearQuadraticRegulator(A, B, Q, R)
 
     # Get Qf from infinite horizon LQR controller
     # (K, S) = QuadrotorLQR(diagram_plant)
-    
+
     # Set options
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
     options.x0 = x_traj
     options.u0 = u_traj
-    # options.Qf = 2*S
+    # options.Qf = S
 
     lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
