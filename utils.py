@@ -48,9 +48,11 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     context.SetTime(0.)
 
     # Set initial state if one is provided
-    if state_init != None:
-        #context.SetContinuousState(state_init)
-        context.SetDiscreteState(state_init)
+    if state_init is None:
+        print("Using default initial state")
+    else:
+        context.SetContinuousState(state_init)
+        #context.SetDiscreteState(state_init)
 
     simulator.Initialize()
 

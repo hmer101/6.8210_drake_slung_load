@@ -184,10 +184,10 @@
       <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_1</name>
-        <pose>1.5 0 .24 0 0 0</pose>
+        <pose>1.5 0 0 0 0 0</pose> <!--.24-->
       </include>
 
-      <include>
+      <!-- <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_2</name>
         <pose>-0.75 1.3 .24 0 0 0</pose>
@@ -197,34 +197,34 @@
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
         <name>x500_3</name>
         <pose>-0.75 -1.3 .24 0 0 0</pose>
-      </include>
+      </include> -->
 
       <!-- LOAD -->
-      <!-- <include>
+      <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/load_generic</uri>
         <name>load</name>
-        <pose>0 0 0.1 0 0 0</pose>
-      </include>-->
+        <pose>0 0 0 0 0 0</pose> <!-- 0.1-->
+      </include>
 
       <!-- TETHERS AND CONNECTIONS -->
       <!-- Tether 1 -->
-      <!--<include>
+      <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
         <name>tether_1</name>
-        <pose>0 0 0.2 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose> <!-- 0.2-->
       </include>
 
-      <joint name="joint_load_tether_1" type="fixed">
+      <joint name="joint_load_tether_1" type="ball"> <!-- fixed -->
         <parent>load::base_link</parent>
-        <child>tether_1::element_0</child>
-        <pose>0.0 0.0 0.1 0.0 0.0 0.0</pose>
+        <child>tether_1::element_1</child>
+        <pose>0.0 0.0 0 0.0 0.0 0.0</pose> <!-- 0.1-->
       </joint>
 
-      <joint name="joint_tether_1_drone_1" type="fixed">
-        <parent>tether_1::element_11</parent>
+      <joint name="joint_tether_1_drone_1" type="ball">
+        <parent>tether_1::element_1</parent>
         <child>x500_1::base_link</child>
         <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
-      </joint>-->
+      </joint>
 
 
       <!-- Tether 2 -->

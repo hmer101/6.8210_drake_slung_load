@@ -106,6 +106,7 @@ def MakeQuadrotorController(diagram_plant):
 
         # For quaternion: #x = [qw, qx, qy, qz, x, y, z, ???? from here ???? vx, vy, vz, wx, wy, wz]. Must satisfy: qw^2 + qx^2 + qy^2 + qz^2 = 1
         #drone_context.SetContinuousState([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        #drone_context.SetContinuousState([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
         # Inputs
         drone_mass = drone_sys.CalcTotalMass(drone_context)
@@ -114,7 +115,8 @@ def MakeQuadrotorController(diagram_plant):
 
         ## Other parameters
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
-        #Q = np.diag([10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]) #np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
+        
+        #Q = np.diag([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) #np.diag([10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
         R = np.diag([0.1, 0.1, 0.1, 0.1]) #np.diag([0.1, 0.1, 0.1, 0.1])
  
         # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html

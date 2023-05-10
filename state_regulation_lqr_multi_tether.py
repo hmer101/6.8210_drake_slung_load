@@ -25,7 +25,7 @@ NAME_DIAGRAM_WITH_CONTROLLER = "quads_with_controller"
 
 GROUP_PREFIX = "swarm::"
 MODEL_PREFIX_DRONE = "x500_"
-NUM_DRONES = 3 #1
+NUM_DRONES = 1 #3 
 FIRST_DRONE_NUM = 1
 PROPS_PER_DRONE = 4
 
@@ -77,9 +77,9 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     #     #plant.Finalize()
 
     # Change frame for load
-    # load_name = GROUP_PREFIX + "load"
-    # load_instance = plant.GetModelInstanceByName(load_name)
-    # AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", load_instance), load_instance, use_ball_rpy=False)
+    load_name = GROUP_PREFIX + "load"
+    load_instance = plant.GetModelInstanceByName(load_name)
+    AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", load_instance), load_instance, use_ball_rpy=False)
 
     plant.Finalize()
 
@@ -174,23 +174,34 @@ def MakeQuadrotorController(diagram_plant):
         drone_2 = [2.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         drone_3 = [0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
+        load = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        state_0 = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 
+                       0.0, -np.pi/2, 0.0, 
+                       0.0, np.pi/2, 0.0, 
+                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         print(f'num_total: {swarm_context.num_total_states()}')
         print(f'num_cont: {swarm_context.num_continuous_states()}')
 
-        #drone_context.SetContinuousState(drone_1)
-        swarm_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
+        swarm_context.SetContinuousState(state_0)
+        #swarm_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
 
 
         # Inputs
         input_dim = NUM_DRONES*PROPS_PER_DRONE 
         drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
+        load_name = GROUP_PREFIX + "load"
+        
         first_drone_instance = swarm_sys.GetModelInstanceByName(drone_name)
+        load_instance = swarm_sys.GetModelInstanceByName(load_name)
+
         single_drone_mass = swarm_sys.CalcTotalMass(swarm_context, [first_drone_instance])
+        load_mass = swarm_sys.CalcTotalMass(swarm_context, [load_instance])
         g = swarm_sys.gravity_field().kDefaultStrength
 
-        #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1]))
-        diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
+        diagram_plant.get_input_port().FixValue(diagram_context, (single_drone_mass+load_mass) * g / 4. * np.array([1, 1, 1, 1]))
+        #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
 
         #g = drone_sys.gravity_field().kDefaultStrength
@@ -204,15 +215,20 @@ def MakeQuadrotorController(diagram_plant):
         #     diagram_plant.get_input_port(i-1).FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
 
 
+        # LOAD: load_x, load_y, load_z, load_YAW, load_PITCH, load_ROLL, 
+        # LOAD-side joint: roll_around_tether_axis (+ve out), ang_around_y_axis, ang_around_z_axis, 
+        # DRONE-side joint: ang_around_x, ang_y, ang_z 
+        # ^^ Velocities for the above?? Hopefully same order
+
         ## Other parameters
-        Q_diag = [10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
-        #Q_comb = np.diag(Q_diag)
-        Q_comb = np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
+        Q_diag = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] #[10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
+        Q_comb = np.diag(Q_diag)
+        #Q_comb = np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
         #Q_alt = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
 
         R_diag = [0.1, 0.1, 0.1, 0.1]
-        #R_comb = np.diag(R_diag)
-        R_comb = np.diag(R_diag + R_diag + R_diag)
+        R_comb = np.diag(R_diag)
+        #R_comb = np.diag(R_diag + R_diag + R_diag)
 
         #print(R_diag + R_diag + R_diag)
         #R_alt = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
@@ -258,8 +274,8 @@ def main():
 
     # Make Quadrotor
     #sdf_path = 'sdf_models/models/x500/model.sdf'
-    sdf_path = 'sdf_models/worlds/default.sdf'
-    #sdf_path = 'sdf_models/worlds/default_commented.sdf'
+    #sdf_path = 'sdf_models/worlds/default.sdf'
+    sdf_path = 'sdf_models/worlds/default_commented.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Show diagram
@@ -274,16 +290,27 @@ def main():
     # Simulate
     #state_init = 0.5*np.random.randn(12,)
 
-    # drone_1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    drone_1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     # drone_2 = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     # drone_3 = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    load = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # LOAD: load_x, load_y, load_z, load_YAW, load_PITCH, load_ROLL, 
+    # LOAD-side joint: roll_around_tether_axis (+ve out), ang_around_y_axis, ang_around_z_axis, 
+    # DRONE-side joint: ang_around_x, ang_y, ang_z 
+    # ^^ Velocities for the above?? Hopefully same order
+    state_init_test = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+                       0.0, -np.pi/2, 0.0, 
+                       0.0, np.pi/2, 0.0, 
+                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     #state_init = drone_1
     #state_init = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
-    #state_init
+     
+    state_init = state_init_test #load + drone_1
 
-    #utils.simulate_diagram(diagram_quad, None, meshcat, realtime_rate=0.75)
-    utils.simulate_diagram(diagram_full, None, meshcat, realtime_rate=0.75)
+    utils.simulate_diagram(diagram_quad, state_init, meshcat, realtime_rate=0.75)
+    #utils.simulate_diagram(diagram_full, None, meshcat, realtime_rate=0.75)
 
 
 if __name__ == "__main__":
