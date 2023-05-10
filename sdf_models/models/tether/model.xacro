@@ -8,12 +8,12 @@
     <xacro:property name="tether_length" value="1.5" />
     <xacro:property name="tether_radius" value="0.01" />
     <xacro:property name="tether_mass" value="0.1" />
-    <xacro:property name="num_elements" value="10" />
+    <xacro:property name="num_elements" value="1" />
 
     <xacro:property name="elem_length_main" value="${tether_length/num_elements}" />
-    <xacro:property name="elem_length_ends" value="0.01" />
+    <!-- <xacro:property name="elem_length_ends" value="0.01" /> -->
     <xacro:property name="elem_mass_main" value="${tether_mass/num_elements}" />
-    <xacro:property name="elem_mass_ends" value="${elem_mass_main*(elem_length_ends/elem_length_main)}" />
+    <!-- <xacro:property name="elem_mass_ends" value="${elem_mass_main*(elem_length_ends/elem_length_main)}" /> -->
 
     <!-- Define link macro -->
     <xacro:macro name="tether_element" params="element_num elem_length elem_mass">
@@ -73,10 +73,10 @@
     <xacro:generate_tether elem_num="${num_elements}" />
 
     <!-- Add start and end elements and joints-->
-    <xacro:tether_element element_num="0" elem_length="${elem_length_ends}" elem_mass="${elem_mass_ends}" />
-    <xacro:tether_element element_num="${num_elements+1}" elem_length="${elem_length_ends}" elem_mass="${elem_mass_ends}" />
+    <!-- <xacro:tether_element element_num="0" elem_length="${elem_length_ends}" elem_mass="${elem_mass_ends}" />
+    <xacro:tether_element element_num="${num_elements+1}" elem_length="${elem_length_ends}" elem_mass="${elem_mass_ends}" /> -->
 
-    <joint name="joint_0_to_1" type="continuous">
+    <!-- <joint name="joint_0_to_1" type="continuous">
         <axis xyz="0. 1. 1."/>
         <origin xyz="${elem_length_ends} 0 0" rpy="0 0 0"/>
         <parent link="element_0"/>
@@ -87,7 +87,7 @@
         <origin xyz="${elem_length_main} 0 0" rpy="0 0 0"/>
         <parent link="element_${num_elements}"/>
         <child link="element_${num_elements+1}"/>
-    </joint>
+    </joint> -->
 
 
 

@@ -101,7 +101,12 @@ def MakeQuadrotorController(diagram_plant):
 
         ## Set plant at linearization point
         # States
+        # For RPY: SetContinuousState([X, Y, Z, YAW, PITCH?, ROLL?, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         drone_context.SetContinuousState([0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        # For quaternion: #x = [qw, qx, qy, qz, x, y, z, ???? from here ???? vx, vy, vz, wx, wy, wz]. Must satisfy: qw^2 + qx^2 + qy^2 + qz^2 = 1
+        #drone_context.SetContinuousState([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        #drone_context.SetContinuousState([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
         # Inputs
         drone_mass = drone_sys.CalcTotalMass(drone_context)
@@ -110,7 +115,9 @@ def MakeQuadrotorController(diagram_plant):
 
         ## Other parameters
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
-        R = np.diag([0.1, 0.1, 0.1, 0.1])
+        
+        #Q = np.diag([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) #np.diag([10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
+        R = np.diag([0.1, 0.1, 0.1, 0.1]) #np.diag([0.1, 0.1, 0.1, 0.1])
  
         # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html
         # or finiteHorizonLQR: https://drake.mit.edu/doxygen_cxx/structdrake_1_1systems_1_1controllers_1_1_finite_horizon_linear_quadratic_regulator_options.html
@@ -134,7 +141,7 @@ def MakeQuadrotorController(diagram_plant):
     builder.Connect(plant.get_output_port(0), controller.get_input_port(0))
 
     # Build diagram
-    diagram = utils.build_diagram(builder, "with controller test")
+    diagram = utils.build_diagram(builder, "Drone with controller")
 
     return diagram 
 
@@ -152,10 +159,11 @@ def main():
     diagram_full = MakeQuadrotorController(diagram_quad)
 
     # Show diagram
-    utils.show_diagram(diagram_full)
+    #utils.show_diagram(diagram_full)
 
-    # Simulate
-    state_init = 0.5*np.random.randn(12,)
+    # Simulate 
+    state_init = np.array([0.0, 0.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    #state_init = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #0.5*np.random.randn(13,) #np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #np.array([0.0, 0.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #0.5*np.random.randn(12,)
     utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
 
 

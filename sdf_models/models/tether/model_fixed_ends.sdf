@@ -1,0 +1,134 @@
+<sdf version='1.10'>
+  <model name='tether'>
+    <link name='element_0'>
+      <inertial>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <mass>0.00066666666666666675</mass>
+        <inertia>
+          <ixx>2.222222222222222e-08</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.222222222222222e-08</iyy>
+          <iyz>0</iyz>
+          <izz>3.3333333333333341e-08</izz>
+        </inertia>
+      </inertial>
+      <collision name='element_0_collision'>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0001</length>
+            <radius>0.0001</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='element_0_visual'>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.01</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='joint_0_to_1' type='ball'>
+      <pose relative_to='element_0'>0.01 0 0 0 0 0</pose>
+      <parent>element_0</parent>
+      <child>element_1</child>
+      <axis>
+        <xyz>0 1 1</xyz>
+        <limit>
+          <lower>-inf</lower>
+          <upper>inf</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='element_1'>
+      <pose relative_to='joint_0_to_1'>0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0.75 0 0 0 1.5707963267948966 0</pose>
+        <mass>0.10000000000000001</mass>
+        <inertia>
+          <ixx>0.018752499999999998</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.018752499999999998</iyy>
+          <iyz>0</iyz>
+          <izz>5.0000000000000004e-06</izz>
+        </inertia>
+      </inertial>
+      <collision name='element_1_collision'>
+        <pose>0.75 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0001</length>
+            <radius>0.0001</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='element_1_visual'>
+        <pose>0.75 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>1.5</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+    <joint name='joint_1_to_2' type='ball'>
+      <pose relative_to='element_1'>1.5 0 0 0 0 0</pose>
+      <parent>element_1</parent>
+      <child>element_2</child>
+      <axis>
+        <xyz>0 1 1</xyz>
+        <limit>
+          <lower>-inf</lower>
+          <upper>inf</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='element_2'>
+      <pose relative_to='joint_1_to_2'>0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <mass>0.00066666666666666675</mass>
+        <inertia>
+          <ixx>2.222222222222222e-08</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.222222222222222e-08</iyy>
+          <iyz>0</iyz>
+          <izz>3.3333333333333341e-08</izz>
+        </inertia>
+      </inertial>
+      <collision name='element_2_collision'>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.0001</length>
+            <radius>0.0001</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='element_2_visual'>
+        <pose>0.0050000000000000001 0 0 0 1.5707963267948966 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.01</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>
