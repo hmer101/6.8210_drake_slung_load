@@ -83,9 +83,6 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     # load_instance = plant.GetModelInstanceByName("swarm::load")
     # AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", load_instance), load_instance, use_ball_rpy=False)
 
-    # The current model instances are 'DefaultModelInstance', 'WorldModelInstance', 
-    # 'swarm', 'swarm::load', 'swarm::tether_1', 'swarm::tether_2', 'swarm::tether_3', 'swarm::x500_1', 'swarm::x500_2', 'swarm::x500_3'
-
     plant.Finalize()
 
     ## Setup variables for co-ordinate changing and propeller connection 
@@ -255,8 +252,7 @@ def GenerateDirColTrajectory(diagram_plant):
         maximum_timestep=0.2
     )
 
-    # Create constraints on trajectory here    # state_init = np.zeros(210,)
-    # utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
+    # Create constraints on trajectory here 
     prog = dircol.prog()
 
     dircol.AddEqualTimeIntervalsConstraints()

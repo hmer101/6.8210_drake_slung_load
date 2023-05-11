@@ -1,5 +1,6 @@
 import numpy as np
 import utils
+import custom_controller
 
 from pydrake.all import(
     AddMultibodyPlantSceneGraph, 
@@ -25,7 +26,7 @@ NAME_DIAGRAM_WITH_CONTROLLER = "quads_with_controller"
 
 GROUP_PREFIX = "swarm::"
 MODEL_PREFIX_DRONE = "x500_"
-NUM_DRONES = 1 #3 #1
+NUM_DRONES = 3 #1
 FIRST_DRONE_NUM = 1
 PROPS_PER_DRONE = 4
 
@@ -44,7 +45,6 @@ PROPS_PER_DRONE = 4
 # HOW THE DEFAULT.SDF FILE WAS CHANGED_notebook
 # 1. Changed all <uri> tags under <include> to not just be the name of the file but /home/bilab/6.8210_project/sdf_models/models/x500 (for example, instead of just x500)
 # 2. Commented out most of the first half of the world file (there can only be one model tag in the sdf file)
-
 
 # Make a multibody quadrotor with propellers diagram
 # Return this diagram that includes the corresponding scene graph for visualizing simulation
@@ -78,30 +78,28 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 
     plant.Finalize()
 
-    # Instantiate demux block to split a single input into multiple inputs. Gives the single input required for using LinearQuadraticRegular function
+    ## Instantiate demux block to split a single input into multiple inputs. Gives the single input required for using LinearQuadraticRegular function
     # input_dim = NUM_DRONES*PROPS_PER_DRONE 
-    splits_input = PROPS_PER_DRONE*np.ones(NUM_DRONES)
-    splits_input = [int(x) for x in splits_input.tolist()]
-    #print(splits_input)
+    # splits_input = PROPS_PER_DRONE*np.ones(NUM_DRONES)
+    # splits_input = [int(x) for x in splits_input.tolist()]
     
-    input_demux = builder.AddSystem(Demultiplexer(splits_input)) #Demultiplexer(input_dim, splits))
+    # input_demux = builder.AddSystem(Demultiplexer(splits_input)) #Demultiplexer(input_dim, splits))
 
-    first_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
-    first_drone_instance = plant.GetModelInstanceByName(first_drone_name)
+    # first_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
+    # first_drone_instance = plant.GetModelInstanceByName(first_drone_name)
     
-    combines_output = plant.num_multibody_states(first_drone_instance)*np.ones(NUM_DRONES) #plant.num_multibody_states())
-    combines_output = [int(x) for x in combines_output.tolist()]
-    #print(combines_output)
+    # combines_output = plant.num_multibody_states(first_drone_instance)*np.ones(NUM_DRONES) #plant.num_multibody_states())
+    # combines_output = [int(x) for x in combines_output.tolist()]
 
-    output_mux = builder.AddSystem(Multiplexer(combines_output))
+    # output_mux = builder.AddSystem(Multiplexer(combines_output))
 
-    # Instantiate the SpatialForceConcatinator to collect all propeller forces to feed into the MultiBodyPlant
-    #spatial_force_concat = utils.SpatialForceConcatinator_[None](NUM_DRONES)
-    spatial_force_concat = ExternallyAppliedSpatialForceMultiplexer(NUM_DRONES)
-    force_concat_sys = builder.AddSystem(spatial_force_concat)
-
+    ## Instantiate the SpatialForceConcatinator to collect all propeller forces to feed into the MultiBodyPlant
+    ## spatial_force_concat = utils.SpatialForceConcatinator_[None](NUM_DRONES)
+    # spatial_force_concat = ExternallyAppliedSpatialForceMultiplexer(NUM_DRONES)
+    # force_concat_sys = builder.AddSystem(spatial_force_concat)
 
     ## Add propellers
+    prop_info = []
     for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
         next_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
         next_drone_instance = plant.GetModelInstanceByName(next_drone_name)
@@ -109,7 +107,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
         body_index = plant.GetBodyByName("base_link", next_drone_instance).index()
 
         # Note: Rotors 0 and 1 rotate one way and rotors 2 and 3 rotate the other.
-        prop_info = [
+        prop_info += [
             PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, kM), # rotor 0
             PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, kM), # rotor 1
             PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, -kM), # rotor 2 cw
@@ -117,24 +115,38 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
         ]
 
         ## Connect diagram
-        propellers = builder.AddSystem(Propeller(prop_info))
-        propellers.set_name(NAME_PROPS + "_" + str(i))
-        builder.Connect(input_demux.get_output_port(i-1), propellers.get_command_input_port())
-        builder.Connect(propellers.get_output_port(0), force_concat_sys.get_input_port(i-1)) # Connect propeller outputs to force concatinator
-        builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
+        # propellers = builder.AddSystem(Propeller(prop_info))
+        # propellers.set_name(NAME_PROPS + "_" + str(i))
 
-        builder.Connect(plant.get_state_output_port(next_drone_instance), output_mux.get_input_port(i-1))
+        # builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port(),)
+        # builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port(),)
+        # builder.ExportInput(propellers.get_command_input_port(), "u")
+        # builder.ExportOutput(plant.get_state_output_port(model_instance), "x500_0_x")
+
+        # builder.Connect(input_demux.get_output_port(i-1), propellers.get_command_input_port())
+        # builder.Connect(propellers.get_output_port(0), force_concat_sys.get_input_port(i-1)) # Connect propeller outputs to force concatinator
+        # builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
+
+        # builder.Connect(plant.get_state_output_port(next_drone_instance), output_mux.get_input_port(i-1))
 
         #builder.ExportInput(propellers.get_command_input_port(), next_drone_name + "_u")
         #builder.ExportOutput(plant.get_state_output_port(next_drone_instance), next_drone_name + "_state")
 
-    # Export single mux input and output
-    builder.ExportInput(input_demux.get_input_port(0), "u_mux")
-    builder.ExportOutput(output_mux.get_output_port(), "state_mux")
+    propellers = builder.AddNamedSystem("propellers", Propeller(prop_info))
 
-    # Connect the propeller forces concatinator to the multibody plant
-    builder.Connect(force_concat_sys.get_output_port(0),
-                    plant.get_applied_spatial_force_input_port())
+    builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port())
+    builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
+
+    # # Export single mux input and output
+    # builder.ExportInput(input_demux.get_input_port(0), "u_mux")
+    # builder.ExportOutput(output_mux.get_output_port(), "state_mux")
+
+    # # Connect the propeller forces concatinator to the multibody plant
+    # builder.Connect(force_concat_sys.get_output_port(0),
+    #                 plant.get_applied_spatial_force_input_port())
+
+    builder.ExportInput(propellers.get_command_input_port(), "u")
+    builder.ExportOutput(plant.get_state_output_port(), "q")
 
     # Add meshcat visualizer
     meshcat.Delete()
@@ -166,32 +178,26 @@ def MakeQuadrotorController(diagram_plant):
         ## Set plant at linearization point
         # States (Note states for tethers, load and reference link are also required)
         drone_1 = [2.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        drone_2 = [-2.0, 2.0, .0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        drone_3 = [-2.0, -2.0, .0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        drone_1 = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        drone_2 = [1.5, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        drone_3 = [0.0, 1.5, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        drone_2 = [-2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        drone_3 = [-2.0, -2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         #drone_context.SetContinuousState(drone_1)
-        #drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-        #drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-        drone_context.SetDiscreteState(drone_1)
+        x_0 = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
+        drone_context.SetDiscreteState(x_0)
 
         # print(f'num_total: {drone_context.num_total_states()}')
         # print(f'num_cont: {drone_context.num_continuous_states()}')
         # print(f'num_disc: {drone_context.get_discrete_state().size()}') #num_discrete_state_groups
-
 
         # Inputs
         input_dim = NUM_DRONES*PROPS_PER_DRONE 
         drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
         first_drone_instance = drone_sys.GetModelInstanceByName(drone_name)
         single_drone_mass = drone_sys.CalcTotalMass(drone_context, [first_drone_instance])
-        g = drone_sys.gravity_field().kDefaultStrength
+        g = drone_sys.gravity_field().kDefaultStrength 
+        u_0 = single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-        diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1]))
-        #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
-
+        diagram_plant.get_input_port().FixValue(diagram_context, u_0) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
         #g = drone_sys.gravity_field().kDefaultStrength
         # for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
@@ -202,66 +208,16 @@ def MakeQuadrotorController(diagram_plant):
         #     # Set input port linearization
         #     drone_mass = drone_sys.CalcTotalMass(drone_context, [drone_instance])
         #     diagram_plant.get_input_port(i-1).FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
+    
 
-
-        ## Other parameters
-        Q_diag = [.0, .0, .0, .0, .0, .0, .0, .0, .0, .1, .1, .1] #[10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1]
-        #Q_comb = np.diag(Q_diag)
-        # Q_comb = np.diag([10, 10, 10, 10, 10, 10, 
-        #           10, 10, 10, 10, 10, 10,
-        #           10, 10, 10, 10, 10, 10, 
-        #           1, 1, 1, 1, 1, 1, 
-        #           1, 1, 1, 1, 1, 1,
-        #           1, 1, 1, 1, 1, 1]) 
-        # Q_comb = np.diag([0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
-        #     0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
-        #     0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1,
-        #     0, 0, 0, 10, 10, 10,
-        #     0, 0, 0, 10, 10, 10,
-        #     0, 0, 0, 10, 10, 10,])
-        
-        # Q_comb = np.diag([0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
-        #     0, 0, 0, 10, 10, 10])
-        Q_comb = np.diag([10, 10, 10, 10, 10, 10, 
-        1, 1, 1, 1, 1, 1])
+        Q_comb = np.diag([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
         
         #np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
         #Q_alt = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
 
         R_diag = [0.1, 0.1, 0.1, 0.1]
-        R_comb = np.diag(R_diag)
-        #R_comb = np.diag(R_diag + R_diag + R_diag)
-
-        #print(R_diag + R_diag + R_diag)
-        #R_alt = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-        drone_lin = Linearize(diagram_plant, diagram_context)
-        # print(drone_lin.A())
-        K, S = LinearQuadraticRegulator(drone_lin.A(), drone_lin.B(), Q_comb, R_comb)
-        print(K)
-        
-#         [[ 1.21141344e+05  1.79388972e+04  1.98731844e+08  1.92904368e+08
-#   -1.37652008e+07 -1.36985994e+07 -2.69119711e+06  5.60677156e+06
-#    3.84946282e+02 -6.65636008e+02 -5.02999479e+03 -1.04800424e+04]
-#  [-1.21141344e+05 -1.79388972e+04  1.98731844e+08  1.92904368e+08
-#    1.37652008e+07  1.36985994e+07  2.69119711e+06 -5.60677156e+06
-#    3.84946282e+02 -6.65636008e+02  5.02999479e+03  1.04800424e+04]
-#  [ 1.21141607e+05 -1.79394556e+04  1.98731844e+08 -1.92904368e+08
-#   -1.37652008e+07  1.36985994e+07 -2.69119711e+06 -5.60677156e+06
-#    3.84946282e+02  6.65636008e+02 -5.02999478e+03  1.04800424e+04]
-#  [-1.21141607e+05  1.79394556e+04  1.98731844e+08 -1.92904368e+08
-#    1.37652008e+07 -1.36985994e+07  2.69119711e+06  5.60677156e+06
-#    3.84946282e+02  6.65636008e+02  5.02999478e+03 -1.04800424e+04]]
-        
-        #print(diagram_plant.num_inputs())
- 
-        # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html
-        # or finiteHorizonLQR: https://drake.mit.edu/doxygen_cxx/structdrake_1_1systems_1_1controllers_1_1_finite_horizon_linear_quadratic_regulator_options.html
-
- 
-        # TODO: Look at R_comb size -> appears to only be doing LQR for single input!!! Have to do for one drone at a time???
-
-        # HOW TO SPLIT controller K into individual drones??
-        # What do with tether and load states for linearising??
+        R_comb = np.diag(R_diag + R_diag + R_diag)
 
         return LinearQuadraticRegulator(diagram_plant, diagram_context, Q_comb, R_comb)
 
@@ -294,9 +250,7 @@ def main():
     # Make Quadrotor
     #sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
-    #sdf_path = 'sdf_models/worlds/default_commented.sdf'
-    #sdf_path = 'sdf_models/worlds/default_drones.sdf'
-    sdf_path = 'sdf_models/worlds/default_drones_1.sdf'
+    sdf_path = 'sdf_models/worlds/default_drones.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Show diagram
@@ -309,25 +263,13 @@ def main():
     utils.show_diagram(diagram_full)
 
     # Simulate
-    #state_init = 0.5*np.random.randn(12,)
-
-    # drone_1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    # drone_2 = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    # drone_3 = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    # #state_init = drone_1
-    # state_init = drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12]
-
-    # state_init = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-    #                     [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
-    #                     [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
-    #                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-    #                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-    #                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    
     state_init = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-
+    
     utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
 
 
