@@ -167,6 +167,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 
 # Make a finite_horizon LQR controller for state regulation of the plant given in the input diagram
 def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
+
     def QuadrotorFiniteHorizonLQR(diagram_plant, options):
         # Create contexts
         diagram_context = diagram_plant.CreateDefaultContext()  
@@ -181,7 +182,7 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         R = np.diag([1, 1, 1, 1,
                     1, 1, 1, 1,
                     1, 1, 1, 1])
- 
+
         return MakeFiniteHorizonLinearQuadraticRegulator(
             diagram_plant, 
             diagram_context,
@@ -192,7 +193,7 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
             options=options
         )
     
-    def QuadrotorLQR(diagram_plant):
+    def QuadrotorInfiniteHorizonLQR(diagram_plant):
         ## Setup
         drone_sys = diagram_plant.GetSubsystemByName(NAME_SWARM)
         
@@ -208,7 +209,7 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        drone_context.SetContinuousState(final_state)
+        drone_context.SetContinuousState(final_state) # TODO maybe lol get_mutable_continuous_state_vector
 
         # Inputs
         input_dim = NUM_DRONES*PROPS_PER_DRONE 
@@ -227,33 +228,44 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         A = drone_lin.A()
         B = drone_lin.B()
 
-        print(A)
-        print(np.shape(A))
-        print(B)
-        print(np.shape(B))
+        # print(A[:6, :6])
+        # print("1")
+        # print(A[:6, 19:24])
+        # print("2")
+        # print(A[19:24, :6])
+        # print("3")
+        # print(A[19:24, 19:24])
+        # print(np.any(A))
+        # print(np.shape(A))
+        # print(B)
+        # print(np.shape(B))
 
         ## Other parameters
-        Q = np.diag([0, 0, 0, 0.1, 0.1, 0.1, 
-                    0, 0, 0, 0.1, 0.1, 0.1,  
-                    0, 0, 0, 0.1, 0.1, 0.1,
-                    0, 0, 0, 10, 10, 10,
-                    0, 0, 0, 10, 10, 10,
-                    0, 0, 0, 10, 10, 10,])
-        R = np.diag([1, 1, 1, 1,
-                    1, 1, 1, 1,
-                    1, 1, 1, 1])
+        Q = np.diag([0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
+                    0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
+                    0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
+                    0.000001, 0.000001, 0.000001, 10, 10, 10,
+                    0.000001, 0.000001, 0.000001, 10, 10, 10,
+                    0.000001, 0.000001, 0.000001, 10, 10, 10])
+        R = np.diag([0.0001, 0.0001, 0.0001, 0.0001,
+                    0.0001, 0.0001, 0.0001, 0.0001,
+                    0.0001, 0.0001, 0.0001, 0.0001,])
  
 
         return LinearQuadraticRegulator(A, B, Q, R)
+    
+
+    # utils.show_diagram(diagram_plant)
 
     # Get Qf from infinite horizon LQR controller
-    # (K, S) = QuadrotorLQR(diagram_plant)
+    (K, S) = QuadrotorInfiniteHorizonLQR(diagram_plant)
+    # print(S)
 
     # Set options
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
     options.x0 = x_traj
     options.u0 = u_traj
-    # options.Qf = S
+    options.Qf = S
 
     lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
@@ -393,7 +405,7 @@ def main():
     diagram_full = MakeQuadrotorController(diagram_quad, x_trajectory, u_trajectory)
 
     # # Show diagram
-    # utils.show_diagram(diagram_full)
+    utils.show_diagram(diagram_full)
 
     # Simulate
     # state_init = np.zeros(36,)

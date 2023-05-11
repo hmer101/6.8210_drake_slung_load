@@ -10,6 +10,7 @@ from pydrake.all import(
     StartMeshcat,
     Propeller,
     PropellerInfo,
+    Linearize,
     RigidTransform)
 
 from underactuated.scenarios import AddFloatingRpyJoint
@@ -112,6 +113,20 @@ def MakeQuadrotorController(diagram_plant):
         drone_mass = drone_sys.CalcTotalMass(drone_context)
         g = drone_sys.gravity_field().kDefaultStrength
         diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
+
+        # Linearize and get A and B matrices for LQR controller
+        input_i = diagram_plant.get_input_port().get_index()
+        output_i = diagram_plant.get_output_port().get_index()
+        drone_lin = Linearize(diagram_plant, diagram_context, input_port_index=input_i, output_port_index=output_i)
+        
+        A = drone_lin.A()
+        B = drone_lin.B()
+
+        print(A)
+        print(np.any(A))
+        print(np.shape(A))
+        print(B)
+        print(np.shape(B))
 
         ## Other parameters
         Q = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])

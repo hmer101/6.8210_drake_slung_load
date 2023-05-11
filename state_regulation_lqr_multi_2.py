@@ -25,7 +25,7 @@ NAME_DIAGRAM_WITH_CONTROLLER = "quads_with_controller"
 
 GROUP_PREFIX = "swarm::"
 MODEL_PREFIX_DRONE = "x500_"
-NUM_DRONES = 1 #3 #1
+NUM_DRONES = 2 #3 #1
 FIRST_DRONE_NUM = 1
 PROPS_PER_DRONE = 4
 
@@ -172,7 +172,7 @@ def MakeQuadrotorController(diagram_plant):
         #drone_context.SetContinuousState(drone_1)
         #drone_context.SetContinuousState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
         #drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_3[0:6] + drone_1[6:12] + drone_2[6:12] + drone_3[6:12])
-        drone_context.SetDiscreteState(drone_1)
+        drone_context.SetDiscreteState(drone_1[0:6] + drone_2[0:6] + drone_1[6:12] + drone_2[6:12])
 
         # print(f'num_total: {drone_context.num_total_states()}')
         # print(f'num_cont: {drone_context.num_continuous_states()}')
@@ -186,7 +186,7 @@ def MakeQuadrotorController(diagram_plant):
         single_drone_mass = drone_sys.CalcTotalMass(drone_context, [first_drone_instance])
         g = drone_sys.gravity_field().kDefaultStrength
 
-        diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1]))
+        diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1]))
         #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
 
@@ -219,14 +219,14 @@ def MakeQuadrotorController(diagram_plant):
         
         # Q_comb = np.diag([0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
         #     0, 0, 0, 10, 10, 10])
-        Q_comb = np.diag([10, 10, 10, 10, 10, 10, 
-        1, 1, 1, 1, 1, 1])
+        Q_comb = np.diag([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
         
         #np.diag(Q_diag[0:6] + Q_diag[0:6] + Q_diag[0:6] + Q_diag[6:12] + Q_diag[6:12] + Q_diag[6:12])
         #Q_alt = np.diag([10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1])
 
         R_diag = [0.1, 0.1, 0.1, 0.1]
-        R_comb = np.diag(R_diag)
+        R_comb = np.diag(R_diag + R_diag)
         #R_comb = np.diag(R_diag + R_diag + R_diag)
 
         #print(R_diag + R_diag + R_diag)
@@ -236,25 +236,11 @@ def MakeQuadrotorController(diagram_plant):
         K, S = LinearQuadraticRegulator(drone_lin.A(), drone_lin.B(), Q_comb, R_comb)
         print(K)
         
-#         [[ 1.21141344e+05  1.79388972e+04  1.98731844e+08  1.92904368e+08
-#   -1.37652008e+07 -1.36985994e+07 -2.69119711e+06  5.60677156e+06
-#    3.84946282e+02 -6.65636008e+02 -5.02999479e+03 -1.04800424e+04]
-#  [-1.21141344e+05 -1.79388972e+04  1.98731844e+08  1.92904368e+08
-#    1.37652008e+07  1.36985994e+07  2.69119711e+06 -5.60677156e+06
-#    3.84946282e+02 -6.65636008e+02  5.02999479e+03  1.04800424e+04]
-#  [ 1.21141607e+05 -1.79394556e+04  1.98731844e+08 -1.92904368e+08
-#   -1.37652008e+07  1.36985994e+07 -2.69119711e+06 -5.60677156e+06
-#    3.84946282e+02  6.65636008e+02 -5.02999478e+03  1.04800424e+04]
-#  [-1.21141607e+05  1.79394556e+04  1.98731844e+08 -1.92904368e+08
-#    1.37652008e+07 -1.36985994e+07  2.69119711e+06  5.60677156e+06
-#    3.84946282e+02  6.65636008e+02  5.02999478e+03 -1.04800424e+04]]
-        
         #print(diagram_plant.num_inputs())
  
         # Perhaps try LMPC: https://drake.mit.edu/doxygen_cxx/classdrake_1_1systems_1_1controllers_1_1_linear_model_predictive_controller.html
         # or finiteHorizonLQR: https://drake.mit.edu/doxygen_cxx/structdrake_1_1systems_1_1controllers_1_1_finite_horizon_linear_quadratic_regulator_options.html
 
- 
         # TODO: Look at R_comb size -> appears to only be doing LQR for single input!!! Have to do for one drone at a time???
 
         # HOW TO SPLIT controller K into individual drones??
@@ -322,6 +308,8 @@ def main():
     #                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     
     state_init = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                            [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+ 
                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
     utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)

@@ -51,15 +51,15 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     if state_init is None:
         print("Using default initial state")
     else:
-        context.SetContinuousState(state_init)
-        #context.SetDiscreteState(state_init)
+        #context.SetContinuousState(state_init)
+        context.SetDiscreteState(state_init)
 
     simulator.Initialize()
 
     print("Press 'Stop Simulation' in MeshCat to continue.")
     meshcat.AddButton('Stop Simulation')
 
-    utils.show_diagram(diagram)
+    #utils.show_diagram(diagram)
 
     # Run simulation
     input("Press [Enter] to start simulation...")
