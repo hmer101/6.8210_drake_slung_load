@@ -247,6 +247,7 @@ def MakeQuadrotorController(diagram_plant):
         # HOW TO SPLIT controller K into individual drones??
         # What do with tether and load states for linearising??
 
+        # MAP VELOCITY TO Q_DOT ERROR HERE!!!!
         return LinearQuadraticRegulator(diagram_plant, diagram_context, Q_comb, R_comb)
 
     lqr_controller = QuadrotorLQR(diagram_plant)
