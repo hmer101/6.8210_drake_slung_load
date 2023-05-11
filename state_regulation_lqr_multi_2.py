@@ -278,7 +278,8 @@ def main():
     #sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
     #sdf_path = 'sdf_models/worlds/default_commented.sdf'
-    sdf_path = 'sdf_models/worlds/default_drones.sdf'
+    #sdf_path = 'sdf_models/worlds/default_drones.sdf'
+    sdf_path = 'sdf_models/worlds/default_drones_2.sdf'
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Show diagram
