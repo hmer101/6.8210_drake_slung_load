@@ -51,17 +51,26 @@ def circle_constraints(zpp, tf, amplitude=1, n=10):
     # Init condition
     zpp.add_constraint(t=0, derivative_order=2, lb=np.zeros(dof))
 
+    # # Intermediate conditions
+    # for ti in range(n):
+    #     ratio = (ti)/n
+    #     # x = ratio * 2*np.pi
+    #     lb = [0, ti, -np.inf, -np.inf]
+    #     ub = [0, 1-ratio*ratio, np.inf, np.inf]
+    #     zpp.add_constraint(t=tf*ratio, derivative_order=0, lb=lb, ub=ub)
+
+    
     # Intermediate conditions
+    cycles = 2
     for ti in range(n):
         ratio = (ti)/n
-        x = ratio * 2*np.pi
-        lb = [amp*np.cos(x)+amp, amp*np.sin(x)+amp, -np.inf, -np.inf]
-        ub = [amp*np.cos(x)+amp, amp*np.sin(x)+amp, np.inf, np.inf]
+        x = ratio * 2*np.pi * cycles
+        lb = [amp*np.cos(x)-amp, 0, -np.inf, -np.inf]
+        ub = [amp*np.cos(x)-amp, 0, np.inf, np.inf]
         zpp.add_constraint(t=tf*ratio, derivative_order=0, lb=lb, ub=ub)
 
     # Final conditions
     zpp.add_constraint(t=tf, derivative_order=2, lb=np.zeros(dof))
-
 
 
 def circle_example():
@@ -276,6 +285,7 @@ def solve_for_states(zpp):
     ###############################
     #   Constants & Conversions   #
     ###############################
+    tf = 20 # final time
     m_i = 1 # quadrotor mass (update later)
     J_i = np.eye(3) # quadrotor inertia (update later)
     e3 = np.array([0,0,1]) # z vector
@@ -290,7 +300,7 @@ def solve_for_states(zpp):
     #           Unknowns          #
     ###############################
     prog    = MathematicalProgram()
-    tcount = 100
+    tcount = 4
     g= 9.81
     u       = prog.NewContinuousVariables(tcount, 4, name="u_i")     # desired output of rotor i
     rpy_i    = prog.NewContinuousVariables(tcount, 3, name="RPi")   # roll, pitch of rotor i
@@ -300,8 +310,12 @@ def solve_for_states(zpp):
     x_i = [zpp.eval(t)[0:3] for t in range(tcount)]
     xdot_i = [zpp.eval(t,1)[0:3] for t in range(tcount)]
     fi = []
+    time_stamps = []
+    dt = tf/(tcount-1)
 
     for t in range(tcount):
+        
+        time_stamps.append(t*dt)
 
         # x,y,z accelerations of drone i
         x     = zpp.eval(t)[0:3]
@@ -352,7 +366,7 @@ def solve_for_states(zpp):
         u_out = result.GetSolution(u)
         rpy_i_out = result.GetSolution(rpy_i)
         omega_i_out = result.GetSolution(Omega_i)
-        return x_i, xdot_i, rpy_i_out, omega_i_out, u_out #, Tiqi_out
+        return x_i, xdot_i, rpy_i_out, omega_i_out, u_out, time_stamps #, Tiqi_out
 
 
 
@@ -376,12 +390,12 @@ def print_traj(x_i, xdot_i, rpy_i, omega_i, ui):
         u = ui
         print(f"---------- t = {t} ----------")
         print (f"x={xyz[0]}\t y={xyz[1]}\t z={xyz[2]}")
-        print (f"xd={xyzdot[0]}\t yd={xyzdot[0]}\t zd={xyzdot[0]}")
+        print (f"xdot={xyzdot[0]}\t ydot={xyzdot[0]}\t zdot={xyzdot[0]}")
         print (f"r={rpy[0]}\t p={rpy[1]}\t y={rpy[2]}")
-        print (f"rd={rpydot[0]}\t pd={rpydot[1]}\t yd={rpydot[2]}")
+        print (f"rdot={rpydot[0]}\t pdot={rpydot[1]}\t ydot={rpydot[2]}")
         print (f"u= {u[0]}")
 
 if True:
     zpp = circle_example()
-    x_i, xdot_i, rpy_i, omega_i, ui = solve_for_states(zpp)
+    x_i, xdot_i, rpy_i, omega_i, ui, time_stamps = solve_for_states(zpp)
     print_traj(x_i, xdot_i, rpy_i, omega_i, ui)

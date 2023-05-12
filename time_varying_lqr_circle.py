@@ -207,10 +207,22 @@ def GenerateDirColTrajectory(diagram_plant):
         dircol.AddConstraintToAllKnotPoints(-lift_force_limit <= u[k])
         dircol.AddConstraintToAllKnotPoints(u[k] <= lift_force_limit)
 
-    initial_state = np.zeros(12,) # 0.5*np.random.randn(12,)
+
+
+
+
+    zpp = SingleQuadrotorTrajectory.circle_example()
+    x_i, xdot_i, rpy_i, omega_i, ui, time_stamps = SingleQuadrotorTrajectory.solve_for_states(zpp)
+    x_full_i_T = np.concatenate((x_i, rpy_i, xdot_i, omega_i), axis=1).transpose()
+    x_full = np.concatenate((x_i, rpy_i, xdot_i, omega_i), axis=1)
+
+
+
+
+    initial_state = x_full[0] # 0.5*np.random.randn(12,)
     prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
 
-    final_state = np.asarray([2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    final_state = x_full[-1]
     prog.AddBoundingBoxConstraint(final_state, final_state, dircol.final_state())
 
     # Cost functions on control effort and time duration
@@ -220,7 +232,9 @@ def GenerateDirColTrajectory(diagram_plant):
     dircol.AddFinalCost(dircol.time()) 
 
     # Define initial trajectory
-    initial_trajectory = PiecewisePolynomial.FirstOrderHold([0.0, 4.0], np.column_stack((initial_state, final_state)))
+
+    initial_trajectory = PiecewisePolynomial.FirstOrderHold(time_stamps, x_full_i_T) # np.column_stack((initial_state, final_state)))
+    
     dircol.SetInitialTrajectory(PiecewisePolynomial(), initial_trajectory)
 
     # Solve for trajectory
@@ -241,21 +255,6 @@ def GenerateDirColTrajectory(diagram_plant):
     vxyz_values = x_values[6:9, :]
     vrpy_values = x_values[9:12, :]
 
-    # fig, ax = plt.subplots(3, 1)
-    # ax[0].plot(times, np.transpose(u_values), label=["Rotor 1", "Rotor 2", "Rotor 3", "Rotor 4"])
-    # ax[0].set_ylabel("Lift Force (kN?)")
-    # ax[0].legend()
-
-    # ax[1].plot(times, np.transpose(xyz_values), label=["x", "y", "z"])
-    # ax[1].set_ylabel("Position (m)")
-    # ax[1].legend()
-
-    # ax[2].plot(times, np.transpose(vxyz_values), label=["vx", "vy", "vz"])
-    # ax[2].set_ylabel("Velocity (m/s)")
-    # ax[2].legend()
-
-    # ax[2].set_xlabel("Time(s)")
-    # plt.show()
 
     return x_traj, u_traj
 
@@ -272,16 +271,15 @@ def main():
     # Generate example state and input trajectories
     print("Making trajectories")
 
-    zpp = SingleQuadrotorTrajectory.circle_example()
-    x_i, xdot_i, rpy_i, omega_i, ui = SingleQuadrotorTrajectory.solve_for_states(zpp)
     # SingleQuadrotorTrajectory.print_traj(x_i, xdot_i, rpy_i, omega_i, ui)
 
-    # x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)
+    x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)
     
     # Make controller
     print("Making controller")
-    x_full_i = np.concatenate((x_i, xdot_i, rpy_i, omega_i), axis=1)
-    diagram_full = MakeQuadrotorController(diagram_quad, x_full_i, ui)
+    xtraj = x_trajectory
+    utraj = u_trajectory
+    diagram_full = MakeQuadrotorController(diagram_quad, xtraj, utraj)
 
     # Show diagram
     print("Showing diagram")
