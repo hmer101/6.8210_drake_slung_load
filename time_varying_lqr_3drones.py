@@ -83,32 +83,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     # load_instance = plant.GetModelInstanceByName("swarm::load")
     # AddFloatingRpyJoint(plant, plant.GetFrameByName("base_link", load_instance), load_instance, use_ball_rpy=False)
 
-    # The current model instances are 'DefaultModelInstance', 'WorldModelInstance', 
-    # 'swarm', 'swarm::load', 'swarm::tether_1', 'swarm::tether_2', 'swarm::tether_3', 'swarm::x500_1', 'swarm::x500_2', 'swarm::x500_3'
-
     plant.Finalize()
-
-    # Instantiate demux block to split a single input into multiple inputs. Gives the single input required for using LinearQuadraticRegular function
-    # input_dim = NUM_DRONES*PROPS_PER_DRONE 
-    splits_input = PROPS_PER_DRONE*np.ones(NUM_DRONES)
-    splits_input = [int(x) for x in splits_input.tolist()]
-    #print(splits_input)
-    
-    input_demux = builder.AddSystem(Demultiplexer(splits_input)) #Demultiplexer(input_dim, splits))
-
-    first_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(1)
-    first_drone_instance = plant.GetModelInstanceByName(first_drone_name)
-    
-    combines_output = plant.num_multibody_states(first_drone_instance)*np.ones(NUM_DRONES) #plant.num_multibody_states())
-    combines_output = [int(x) for x in combines_output.tolist()]
-    #print(combines_output)
-
-    output_mux = builder.AddSystem(Multiplexer(combines_output))
-
-    # Instantiate the SpatialForceConcatinator to collect all propeller forces to feed into the MultiBodyPlant
-    #spatial_force_concat = utils.SpatialForceConcatinator_[None](NUM_DRONES)
-    spatial_force_concat = ExternallyAppliedSpatialForceMultiplexer(NUM_DRONES)
-    force_concat_sys = builder.AddSystem(spatial_force_concat)
 
     ## Setup variables for co-ordinate changing and propeller connection 
     # Default parameters from quadrotor_plant.cc:
@@ -117,6 +92,7 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
     kM = 0.0245  # Moment input constant.
 
     ## Add propellers
+    prop_info = []
     for i in range(FIRST_DRONE_NUM,NUM_DRONES+1):
         next_drone_name = GROUP_PREFIX + MODEL_PREFIX_DRONE + str(i)
         next_drone_instance = plant.GetModelInstanceByName(next_drone_name)
@@ -124,39 +100,29 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
         body_index = plant.GetBodyByName("base_link", next_drone_instance).index()
 
         # Note: Rotors 0 and 1 rotate one way and rotors 2 and 3 rotate the other.
-        prop_info = [
+        prop_info += [
             PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, kM), # rotor 0
             PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, kM), # rotor 1
             PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, -kM), # rotor 2 cw
             PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
         ]
+    
+    # Connect propellers to plant
+    propellers = builder.AddNamedSystem("propellers", Propeller(prop_info))
 
-        ## Connect diagram
-        propellers = builder.AddSystem(Propeller(prop_info))
-        propellers.set_name(NAME_PROPS + "_" + str(i))
-        builder.Connect(input_demux.get_output_port(i-1), propellers.get_command_input_port())
-        builder.Connect(propellers.get_output_port(0), force_concat_sys.get_input_port(i-1)) # Connect propeller outputs to force concatinator
-        builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
+    builder.Connect(propellers.get_output_port(), plant.get_applied_spatial_force_input_port())
+    builder.Connect(plant.get_body_poses_output_port(), propellers.get_body_poses_input_port())
 
-        builder.Connect(plant.get_state_output_port(next_drone_instance), output_mux.get_input_port(i-1))
-
-        #builder.ExportInput(propellers.get_command_input_port(), next_drone_name + "_u")
-        #builder.ExportOutput(plant.get_state_output_port(next_drone_instance), next_drone_name + "_state")
-
-    # Export single mux input and output
-    builder.ExportInput(input_demux.get_input_port(0), "u_mux")
-    builder.ExportOutput(output_mux.get_output_port(), "state_mux")
-
-    # Connect the propeller forces concatinator to the multibody plant
-    builder.Connect(force_concat_sys.get_output_port(0),
-                    plant.get_applied_spatial_force_input_port())
+    # Export input
+    builder.ExportInput(propellers.get_command_input_port(), "u")
+    builder.ExportOutput(plant.get_state_output_port(), "q")
 
     # Add meshcat visualizer
     meshcat.Delete()
     MeshcatVisualizer.AddToBuilder(builder, scene_graph, meshcat)
 
     # Logger block to measured data
-    logger = LogVectorOutput(output_mux.get_output_port(), builder)
+    logger = LogVectorOutput(plant.get_state_output_port(), builder)
     logger.set_name("logger")
 
     ## Build diagram
@@ -173,15 +139,15 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         diagram_context = diagram_plant.CreateDefaultContext()  
 
         # Q and R matrices
-        Q = np.diag([0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
-                    0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1, 
-                    0.00001, 0.00001, 0.00001, 0.1, 0.1, 0.1,
-                    0, 0, 0, 10, 10, 10,
-                    0, 0, 0, 10, 10, 10,
-                    0, 0, 0, 10, 10, 10,])
-        R = np.diag([1, 1, 1, 1,
-                    1, 1, 1, 1,
-                    1, 1, 1, 1])
+        Q = np.diag([10, 10, 10, 10, 10, 10, 
+                    10, 10, 10, 10, 10, 10, 
+                    10, 10, 10, 10, 10, 10,
+                    1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1])
+        R = np.diag([0.1, 0.1, 0.1, 0.1,
+                    0.1, 0.1, 0.1, 0.1,
+                    0.1, 0.1, 0.1, 0.1])
 
         return MakeFiniteHorizonLinearQuadraticRegulator(
             diagram_plant, 
@@ -228,34 +194,18 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
         A = drone_lin.A()
         B = drone_lin.B()
 
-        # print(A[:6, :6])
-        # print("1")
-        # print(A[:6, 19:24])
-        # print("2")
-        # print(A[19:24, :6])
-        # print("3")
-        # print(A[19:24, 19:24])
-        # print(np.any(A))
-        # print(np.shape(A))
-        # print(B)
-        # print(np.shape(B))
-
-        ## Other parameters
-        Q = np.diag([0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
-                    0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
-                    0.000001, 0.000001, 0.000001, 0.1, 0.1, 0.1, 
-                    0.000001, 0.000001, 0.000001, 10, 10, 10,
-                    0.000001, 0.000001, 0.000001, 10, 10, 10,
-                    0.000001, 0.000001, 0.000001, 10, 10, 10])
-        R = np.diag([0.0001, 0.0001, 0.0001, 0.0001,
-                    0.0001, 0.0001, 0.0001, 0.0001,
-                    0.0001, 0.0001, 0.0001, 0.0001,])
- 
+        # Other parameters
+        Q = np.diag([10, 10, 10, 10, 10, 10, 
+                    10, 10, 10, 10, 10, 10, 
+                    10, 10, 10, 10, 10, 10,
+                    1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1])
+        R = np.diag([0.1, 0.1, 0.1, 0.1,
+                    0.1, 0.1, 0.1, 0.1,
+                    0.1, 0.1, 0.1, 0.1])
 
         return LinearQuadraticRegulator(A, B, Q, R)
-    
-
-    # utils.show_diagram(diagram_plant)
 
     # Get Qf from infinite horizon LQR controller
     (K, S) = QuadrotorInfiniteHorizonLQR(diagram_plant)
@@ -265,7 +215,7 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
     options.x0 = x_traj
     options.u0 = u_traj
-    options.Qf = S
+    options.Qf = 20*S
 
     lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
@@ -302,8 +252,7 @@ def GenerateDirColTrajectory(diagram_plant):
         maximum_timestep=0.2
     )
 
-    # Create constraints on trajectory here    # state_init = np.zeros(210,)
-    # utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
+    # Create constraints on trajectory here 
     prog = dircol.prog()
 
     dircol.AddEqualTimeIntervalsConstraints()
@@ -322,9 +271,9 @@ def GenerateDirColTrajectory(diagram_plant):
                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
 
-    final_state = np.asarray([2.0, 0.0, 2.0, 0.0, 0.0, 0.0]+
-                            [-2.0, 2.0, 2.0, 0.0, 0.0, 0.0]+
-                            [-2.0, -2.0, 2.0, 0.0, 0.0, 0.0]+
+    final_state = np.asarray([2.0, 2.0, 3.0, 0.0, 0.0, 0.0]+
+                            [-1.0, 1.0, 2.0, 0.0, 0.0, 0.0]+
+                            [-2.5, -2.5, 1.5, 0.0, 0.0, 0.0]+
                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -388,13 +337,6 @@ def main():
     
     print("Creating multibody system")
     diagram_quad, logger = MakeMultibodyQuadrotor(sdf_path, meshcat)
-
-    # diagram_context = diagram_quad.CreateDefaultContext()
-    # swarm_sys = diagram_quad.GetSubsystemByName(NAME_SWARM)
-    # swarm_context = swarm_sys.GetMyContextFromRoot(diagram_context)
-
-    # print(swarm_context.num_total_states())
-    # print(swarm_context.num_continuous_states())
 
     # Generate example state and input trajectories
     print("Generating trajectory")
