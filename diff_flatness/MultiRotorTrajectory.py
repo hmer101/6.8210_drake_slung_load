@@ -400,8 +400,12 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
         assert type(XL) == type(np.array([])), "Error, XL not a numpy array"
 
-        max_angle = 0.4*np.pi/4
+        max_angle = 0.4*(np.pi/4)
         prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
+
+        # Input constraints
+        prog.AddLinearConstraint(u[t], [0]*len(u[t]), [umax]*len(u[t]))
+
         for i in range(n):
             # Rotation matrix of quadrotor i wrt earth
             r_i = rotation_matrix(rpy_i[t][0+i:3+i])
@@ -417,8 +421,6 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             distance = np.linalg.norm(vector)
             prog.AddConstraint(distance == rope_len)
 
-            # Input constraints
-            prog.AddLinearConstraint(u[t], [0]*len(u[t]), [umax] * len(u[t]))
 
             ###############################################
             # Deone Velocity and acceleration constraints #
@@ -514,7 +516,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         assert len(rhs_m) == 3, "Error, load rhs_m != 3"
 
         deltaU = u[t+1] - u[t]
-        u_jerk = 3
+        u_jerk = umax/3.0
         prog.AddLinearConstraint(deltaU, [-u_jerk]*len(deltaU), [u_jerk]*len(deltaU))
 
         #####################################
@@ -555,7 +557,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             data = pickle.load(f)
         prog.SetInitialGuessForAllVariables(data)
     result = Solve(prog)
-    assert result.is_success()
+    assert result.is_success(), "Error, solver failed to find a solution"
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
     print(f" saving initial guess to file {cache_file}")
     good = result.is_success()
@@ -578,7 +580,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     last_shape = x_L_out.shape
     for output in all_outputs:
         assert last_shape[0] == output.shape[0], "Error, shapes are different! last_shape={last_shape} output_shape={output.shape}"
-
+    u_out = u_out[:-1]
 
     if not(good):
         print("DYNAMICS SOLVER FAILED")
@@ -591,7 +593,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 if __name__ == "__main__":
 
     timesteps = 50
-    dt = .1
+    dt = .11
     tf = timesteps*dt
     zpp = circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)

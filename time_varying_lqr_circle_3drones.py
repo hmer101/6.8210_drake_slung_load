@@ -318,7 +318,7 @@ def GenerateDirColTrajectory(diagram_plant):
     else:
         t_out = []
         
-    offset = 5 # time to get to the beginning and end states
+    offset = .1 # time to get to the beginning and end states
     for t in range(len(x_i)):
         # x_i[t] = [ x_0, y_0, z_0, x_1, y_1, ... y_n, z_n]
         # rpy_i[t] = [ r_0, p_0, yaw_0, r_1, p_1, ... p_n, yaw_n]
