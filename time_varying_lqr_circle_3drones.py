@@ -34,6 +34,16 @@ from pydrake.all import(
 from underactuated import running_as_notebook
 from underactuated.scenarios import AddFloatingRpyJoint
 
+
+global global_initial_state
+global_initial_state= np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+
 NAME_SWARM = "swarm"
 NAME_PROPS = "propellers"
 NAME_DIAGRAM_QUAD = "quads_diagram"
@@ -288,23 +298,26 @@ def GenerateDirColTrajectory(diagram_plant):
 
     dircol.AddFinalCost(dircol.time()) 
 
-    # Define initial trajectory
-
     ##################
     # DIFF FLATNESS
     ##################
-
     timesteps = 50
     dt = .1
     tf = timesteps*dt
-    
+
+    include_init = False
+    include_final = True
+
     zpp = diff_flatness.MultiRotorTrajectory.circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
     x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = diff_flatness.MultiRotorTrajectory.solve_for_states_n_rotors(zpp, 
                                                                                     3, tf=tf, timesteps=timesteps)
-
     intermediate_states = []
-    t_out = [0]
+    if include_init:
+        t_out = [0]
+    else:
+        t_out = []
+        
     offset = 5 # time to get to the beginning and end states
     for t in range(len(x_i)):
         # x_i[t] = [ x_0, y_0, z_0, x_1, y_1, ... y_n, z_n]
@@ -317,16 +330,27 @@ def GenerateDirColTrajectory(diagram_plant):
             state.extend(rpy_i[t][3*i:3*i+3])
             state.extend(x_dot_i[t][3*i:3*i+3])
             state.extend(omega_i[t][3*i:3*i+3])
-
         intermediate_states.append(np.asarray(state))
         # intermediate_states.append(np.asarray([x_i[t][3*i:3*i+3].hstack(rpy_i[t][3*i:3*i+3]) for i in range(3)]))
         t_out.append(t_array[t]+offset)
 
+
+    if include_final:
+        t_out.append(t_out[-1]+offset)
     intermediate_states = np.asarray(intermediate_states).T
-    
-    t_out.append(t_out[-1]+offset)
-    
-    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, np.column_stack((initial_state, intermediate_states, final_state)))
+
+    states_out = intermediate_states
+    if include_init:
+        states_out = np.column_stack((initial_state, states_out))
+
+    global global_initial_state
+    global_initial_state = states_out.T[0]
+
+    if include_final:
+        states_out = np.column_stack((states_out, final_state))
+
+    assert len(t_out) == len(states_out[0]), "time and state dimension mismatch"
+    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, states_out)
     dircol.SetInitialTrajectory(PiecewisePolynomial(), initial_trajectory)
 
 
@@ -343,10 +367,6 @@ def GenerateDirColTrajectory(diagram_plant):
     result = Solve(prog)
     assert result.is_success()
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
-    ###################
-    # SOLVER CACHEING #
-    ###################
-
 
 
     # Extract trajectory information
@@ -354,13 +374,13 @@ def GenerateDirColTrajectory(diagram_plant):
     u_traj = dircol.ReconstructInputTrajectory(result)
 
     # Uncomment block below to visualize
-    times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
-    u_values = u_traj.vector_values(times)
-    x_values = x_traj.vector_values(times)
-    xyz_values1 = x_values[0:3, :]
-    xyz_values2 = x_values[6:9, :]
-    xyz_values3 = x_values[12:15, :]
-    rpy_values = x_values[3:6, :]
+    # times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
+    # u_values = u_traj.vector_values(times)
+    # x_values = x_traj.vector_values(times)
+    # xyz_values1 = x_values[0:3, :]
+    # xyz_values2 = x_values[6:9, :]
+    # xyz_values3 = x_values[12:15, :]
+    # rpy_values = x_values[3:6, :]
     # vxyz_values = x_values[6:9, :]
     # vrpy_values = x_values[9:12, :]
 
@@ -415,12 +435,12 @@ def main():
 
     # Simulate
     # state_init = np.zeros(36,)
-    state_init = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    state_init = global_initial_state # None #np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
 
     # simulator = Simulator(diagram_full)

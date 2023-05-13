@@ -3,6 +3,8 @@ import math
 import matplotlib.pyplot as plt
 import mpld3
 import numpy as np
+import os
+import pickle
 from IPython.display import HTML, display
 from pydrake.all import (
     AddMultibodyPlantSceneGraph,
@@ -66,8 +68,8 @@ def circle_example_n_rotors(n, degree=6, continuity_degree=5, discretization_sam
         degree=degree, # degree of the polynomial
         continuity_degree=continuity_degree,) # continuity degree of the polynomial
 
-    lam_min = 9.8/3
-    lam_max = 9.8/3
+    lam_min = .0001*9.8/3
+    lam_max = .0001*9.8/3
 
     circle_constraints_n_rotors(zpp, tf, n, lam_min, lam_max, amplitude=1, diff_solver_samples=diff_solver_samples)
     did_succeed = zpp.generate()
@@ -111,7 +113,7 @@ def circle_constraints_n_rotors(zpp, tf, n, lam_min, lam_max, amplitude=1, diff_
     for ti in range(diff_solver_samples):
         ratio = (ti)/diff_solver_samples
         x = ratio * 2*np.pi
-        tol = 0.3
+        tol = 0.1
         # #      X lb and ub,       Y lb and ub,      Z,        hdg
         lb = [amp*np.cos(x)+amp-tol,   amp*np.sin(x)+amp-tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_min + psi_min
         ub = [amp*np.cos(x)+amp+tol,   amp*np.sin(x)+amp+tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_max + psi_max # Y --> amp*np.sin(x)+amp
@@ -126,6 +128,9 @@ def circle_constraints_n_rotors(zpp, tf, n, lam_min, lam_max, amplitude=1, diff_
 
     # Final conditions (stationary)
     zpp.add_constraint(t=tf, derivative_order=1, lb=np.zeros(dof))
+
+
+
 
 
 
@@ -238,6 +243,20 @@ class PPTrajectory:
         self.prog.AddLinearConstraint(val, lb, ub)
 
     def generate(self):
+
+
+        cache_file = "ppt_trajectory_solution.npy"
+        # Solve for trajectory
+        if (os.path.exists(cache_file)):
+            print(f" loading initial guess from file {cache_file}")
+            with open(cache_file, 'rb') as f:
+                data = pickle.load(f)
+            self.prog.SetInitialGuessForAllVariables(data)
+        result = Solve(self.prog)
+        assert result.is_success()
+        pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
+        print(f" saving initial guess to file {cache_file}")
+        
         self.result = Solve(self.prog)
         return self.result.is_success()
 
@@ -318,23 +337,24 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     tcount = timesteps
     dt = tf/tcount
     g= 9.81
-    m = [1]*n # quadrotor mass (update later)
-    umax = 20
+
+    m = [0.016076923076923075]*n # quadrotor mass (copied from model.sdf)
+    umax = 10/4
     J = []
     for i in range(n):
-        J.append(np.eye(3)) # quadrotor inertia (update later)
-    m_L = 1
-    J_L = np.eye(3)
+        J.append(np.diag([3.8464910483993325e-07, 2.6115851691700804e-05, 2.649858234714004e-05])) # quadrotor inertia (copied from model.sdf)
+    m_L = .0001
+    J_L = np.diag([3.8464910483993325e-07, 2.6115851691700804e-05, 2.649858234714004e-05])*m_L
     # distance from anchor point to drone
-    rope_len = 10
+    rope_len = 0.174  # Length for arms (m)
     # vectors from the load's COM to the anchor point
     anchor_points = 0.5 * np.array([ np.array([ 0,  1,  1]),
                                 np.array([-1, -1,  1]),
                                 np.array([-1,  1,  1])])
 
     e3 = np.array([0,0,1]) # z vector
-    thrust_ratio = 1
-    moment_ratio = 1
+    thrust_ratio = 1.0
+    moment_ratio = 0.0245
     # used to convert u1 u2 u3 u4 to Tx Ty and Tz
     u2m = moment_ratio * np.array([[0, 1, 0, -1], [1, 0, -1, 0],[-1, 1, -1, 1]])
     ###############################
@@ -380,8 +400,8 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
         assert type(XL) == type(np.array([])), "Error, XL not a numpy array"
 
-
-        prog.AddLinearConstraint(rpy_i[t], [-np.pi/2]*3*n, [np.pi/2]*3*n)
+        max_angle = 0.4*np.pi/4
+        prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
         for i in range(n):
             # Rotation matrix of quadrotor i wrt earth
             r_i = rotation_matrix(rpy_i[t][0+i:3+i])
@@ -525,7 +545,19 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
                         [0,  0,  rope_len]])
 
 
+
+
+    cache_file = "n_rotor_states.npy"
+    # Solve for trajectory
+    if (os.path.exists(cache_file)):
+        print(f" loading initial guess from file {cache_file}")
+        with open(cache_file, 'rb') as f:
+            data = pickle.load(f)
+        prog.SetInitialGuessForAllVariables(data)
     result = Solve(prog)
+    assert result.is_success()
+    pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
+    print(f" saving initial guess to file {cache_file}")
     good = result.is_success()
 
     axis = 0
@@ -556,30 +588,32 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
 
 
-if True:
+if __name__ == "__main__":
 
     timesteps = 50
     dt = .1
     tf = timesteps*dt
     zpp = circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
-    no_d  = [zpp.eval(t*dt)    for t in range(timesteps)]
-    one_d = [zpp.eval(t*dt,1)  for t in range(timesteps)]
-    two_d = [zpp.eval(t*dt,2)  for t in range(timesteps)]
-    t_array = [t*dt for t in range(timesteps)]
-    x_L,x_i, R_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = solve_for_states_n_rotors(zpp, 
+    x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = solve_for_states_n_rotors(zpp, 
                                                                                     3, tf=tf, timesteps=timesteps)
     
     print("XL")
     plot_trajectories(x_L)
     print("Xi")
     plot_trajectories(x_i)
+    print("x0")
+    plot_trajectories(x_i[:,0:3])
+    print("x1")
+    plot_trajectories(x_i[:,3:6])
+    print("x2")
+    plot_trajectories(x_i[:,6:9])
     print("rpy_i")
     plot_trajectories(rpy_i)
+    print("rpy_0")
+    plot_trajectories(rpy_i[:,0:3])
     print("TiQi")
     plot_trajectories(Tiqi)
     print("u")
     plot_trajectories(u_out)
     
-
-
