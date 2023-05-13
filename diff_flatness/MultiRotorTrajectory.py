@@ -433,9 +433,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             rhs_v = Xdot_i[t].tolist()
             lhs_a = accel.tolist()
             rhs_a = Xddot_i[t].tolist()
-            for j in range(len(rhs_v)):
-                prog.AddConstraint(lhs_v[j] == rhs_v[j])
-                prog.AddConstraint(lhs_a[j] == rhs_a[j])
+            # for j in range(len(rhs_v)):
+                # prog.AddConstraint(lhs_v[j] == rhs_v[j])
+                # prog.AddConstraint(lhs_a[j] == rhs_a[j])
             
             # Angular
             avel = (rpy_i[t] - rpy_i[t+1])/dt
@@ -444,9 +444,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             rhs_av = Omega_i[t].tolist()
             lhs_aa = aaccel.tolist()
             rhs_aa = Omegadot_i[t].tolist()
-            for j in range(len(rhs_av)):
-                prog.AddConstraint(lhs_av[j] == rhs_av[j])
-                prog.AddConstraint(lhs_aa[j] == rhs_aa[j])
+            # for j in range(len(rhs_av)):
+                # prog.AddConstraint(lhs_av[j] == rhs_av[j])
+                # prog.AddConstraint(lhs_aa[j] == rhs_aa[j])
             
             # Load yaw and its derivatives
             prog.AddConstraint(rpy_i[t][3*i+2]           == zpp.eval(t)  [3*n+i])
@@ -556,7 +556,10 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         with open(cache_file, 'rb') as f:
             data = pickle.load(f)
         prog.SetInitialGuessForAllVariables(data)
+    else:
+        print(f"No initial cached guess for {tcount} steps, {dt} dt")
     result = Solve(prog)
+
     assert result.is_success(), "Error, solver failed to find a solution"
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
     
@@ -594,7 +597,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 if __name__ == "__main__":
 
     timesteps = 51
-    dt = .1
+    dt = .2
     tf = timesteps*dt
     zpp = circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
