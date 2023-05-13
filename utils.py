@@ -47,7 +47,7 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
     simulator.set_target_realtime_rate(realtime_rate)
     context = simulator.get_mutable_context()
 
-    context.SetTime(0.)
+    context.SetTime(0.0)
 
     # Set initial state if one is provided
     if state_init is None:
@@ -65,6 +65,7 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
 
     # Run simulation
     input("Press [Enter] to start simulation...")
+    # simulator.AdvanceTo(50.0)
     while meshcat.GetButtonClicks('Stop Simulation') < 1:
         #print("Before advance")
 
@@ -72,9 +73,9 @@ def simulate_diagram(diagram, state_init, meshcat, realtime_rate=1.0, max_advanc
         simulator.AdvanceTo(simulator.get_context().get_time() + max_advance_time)
 
 
-        #print("After advance")
+        print(f"After advance t={simulator.get_context().get_time()}")
         time.sleep(sleep_time)
-        #print("After sleep")
+        # print("After sleep")
 
 
 # Get a stable state to linearize around for the n-drone case

@@ -549,7 +549,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
 
 
-    cache_file = "n_rotor_states.npy"
+    cache_file = f"n_rotor_states_{tcount}steps_{dt}dt.npy"
     # Solve for trajectory
     if (os.path.exists(cache_file)):
         print(f" loading initial guess from file {cache_file}")
@@ -559,6 +559,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     result = Solve(prog)
     assert result.is_success(), "Error, solver failed to find a solution"
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
+    
     print(f" saving initial guess to file {cache_file}")
     good = result.is_success()
 
@@ -592,8 +593,8 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
 if __name__ == "__main__":
 
-    timesteps = 50
-    dt = .11
+    timesteps = 51
+    dt = .1
     tf = timesteps*dt
     zpp = circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
@@ -614,6 +615,10 @@ if __name__ == "__main__":
     plot_trajectories(rpy_i)
     print("rpy_0")
     plot_trajectories(rpy_i[:,0:3])
+    print("rpy_1")
+    plot_trajectories(rpy_i[:,3:6])
+    print("rpy_2")
+    plot_trajectories(rpy_i[:,6:9])
     print("TiQi")
     plot_trajectories(Tiqi)
     print("u")
