@@ -180,33 +180,34 @@
         </visual>
       </link> -->
 
-      <!-- DRONES -->
-      <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
-        <name>x500_1</name>
-        <pose>1.5 0 0 0 0 0</pose> <!--.24-->
-      </include>
-
-      <!-- <include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
-        <name>x500_2</name>
-        <pose>-0.75 1.3 .24 0 0 0</pose>
-      </include>
-
-      <include>splits_input
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
-        <name>x500_3</name>
-        <pose>-0.75 -1.3 .24 0 0 0</pose>
-      </include> -->
-
       <!-- LOAD -->
       <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/load_generic</uri>
         <name>load</name>
-        <pose>0 0 0 0 0 0</pose> <!-- 0.1-->
+        <pose>0 0 0 0 0 0</pose>
       </include>
 
-      <!-- TETHERS AND CONNECTIONS -->
+      <!-- DRONES -->
+      <include>
+        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <name>x500_1</name>
+        <pose>1.5 0 0 0 0 0</pose>
+      </include>
+
+      <include>
+        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <name>x500_2</name>
+        <pose>-0.75 1.3 0 0 0 0</pose>
+      </include>
+
+      <include>
+        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/x500</uri>
+        <name>x500_3</name>
+        <pose>-0.75 -1.3 0 0 0 0</pose>
+      </include>
+
+      
+      <!-- TETHERS -->
       <!-- Tether 1 -->
       <include>
         <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
@@ -214,6 +215,23 @@
         <pose>0 0 0 0 0 0</pose> <!-- 0.2-->
       </include>
 
+      <!-- Tether 2 -->
+      <include>
+        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
+        <name>tether_2</name>
+        <pose>0 0 0 0 0 2.09439510239</pose>
+      </include>
+
+      <!-- Tether 3 -->
+      <include>
+        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
+        <name>tether_3</name>
+        <pose>0 0 0 0 0 4.18879020479</pose>
+      </include>
+
+
+      <!-- CONNECTIONS -->
+      <!-- Tether 1 -->
       <joint name="joint_load_tether_1" type="ball"> <!-- fixed -->
         <parent>load::base_link</parent>
         <child>tether_1::element_1</child>
@@ -228,42 +246,31 @@
 
 
       <!-- Tether 2 -->
-      <!--<include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
-        <name>tether_2</name>
-        <pose>0 0 0.2 0 0 2.09439510239</pose>
-      </include>
-
-      <joint name="joint_load_tether_2" type="fixed">
+      <joint name="joint_load_tether_2" type="ball">
         <parent>load::base_link</parent>
-        <child>tether_2::element_0</child>
-        <pose>0.0 0.0 0.1 0.0 0.0 0.0</pose>
+        <child>tether_2::element_1</child>
+        <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
       </joint>
 
-      <joint name="joint_tether_2_drone_2" type="fixed">
-        <parent>tether_2::element_11</parent>
+      <joint name="joint_tether_2_drone_2" type="ball">
+        <parent>tether_2::element_1</parent>
         <child>x500_2::base_link</child>
         <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
-      </joint>-->
-
-      <!-- Tether 3 -->
-      <!--<include>
-        <uri>/home/harvey/repos/6.8210_project/sdf_models/models/tether</uri>
-        <name>tether_3</name>
-        <pose>0 0 0.2 0 0 4.18879020479</pose>
-      </include>
-
-      <joint name="joint_load_tether_3" type="fixed">
-        <parent>load::base_link</parent>
-        <child>tether_3::element_0</child>
-        <pose>0.0 0.0 0.1 0.0 0.0 0.0</pose>
       </joint>
 
-      <joint name="joint_tether_3_drone_3" type="fixed">
-        <parent>tether_3::element_11</parent>
+      
+      <!-- Tether 3 -->
+      <joint name="joint_load_tether_3" type="ball">
+        <parent>load::base_link</parent>
+        <child>tether_3::element_1</child>
+        <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
+      </joint>
+
+      <joint name="joint_tether_3_drone_3" type="ball">
+        <parent>tether_3::element_1</parent>
         <child>x500_3::base_link</child>
         <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
-      </joint> -->
+      </joint>
 
     </model>
 

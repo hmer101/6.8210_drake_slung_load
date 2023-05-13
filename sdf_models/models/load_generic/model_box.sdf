@@ -5,17 +5,14 @@
     <link name="base_link">
       <pose>0 0 0 0 0 0</pose>
       <inertial>
-        <mass>1.0</mass>
+        <mass>0.05</mass>
       </inertial>
       <visual name="base_link_visual">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <!-- <box>
-           <size>0.2 0.2 0.2</size>
-          </box> -->
-          <sphere>
-            <radius>0.0002</radius>
-          </sphere>
+          <box>
+            <size>0.2 0.2 0.2</size> <!--0.2 0.2 0.2-->
+          </box>
         </geometry>
         <material>
           <ambient>0.8 0 0 1</ambient> 
@@ -27,12 +24,9 @@
       <collision name="base_link_collision">
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <!-- <box>
-            <size>0.00001 0.00001 0.00001</size> .2 0.2 0.2
-          </box> -->
-          <sphere>
-            <radius>0.0001</radius>
-          </sphere>
+          <box>
+            <size>0.00001 0.00001 0.00001</size> <!--0.2 0.2 0.2-->
+          </box>
         </geometry>
       </collision>
     </link>
