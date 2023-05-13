@@ -1,7 +1,8 @@
 import numpy as np
 import utils
-import os
+import diff_flatness.MultiRotorTrajectory
 import pickle
+import os
 
 from matplotlib import pyplot as plt
 
@@ -288,11 +289,50 @@ def GenerateDirColTrajectory(diagram_plant):
     dircol.AddFinalCost(dircol.time()) 
 
     # Define initial trajectory
-    initial_trajectory = PiecewisePolynomial.FirstOrderHold([0.0, 4.0], np.column_stack((initial_state, final_state)))
+
+    ##################
+    # DIFF FLATNESS
+    ##################
+
+    timesteps = 50
+    dt = .1
+    tf = timesteps*dt
+    
+    zpp = diff_flatness.MultiRotorTrajectory.circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
+            discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
+    x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = diff_flatness.MultiRotorTrajectory.solve_for_states_n_rotors(zpp, 
+                                                                                    3, tf=tf, timesteps=timesteps)
+
+    intermediate_states = []
+    t_out = [0]
+    offset = 5 # time to get to the beginning and end states
+    for t in range(len(x_i)):
+        # x_i[t] = [ x_0, y_0, z_0, x_1, y_1, ... y_n, z_n]
+        # rpy_i[t] = [ r_0, p_0, yaw_0, r_1, p_1, ... p_n, yaw_n]
+
+        # x_i[t][3*i:3*i+3] --> [x_i, y_i, z_i] at timestep number t
+        state = []
+        for i in range(3):
+            state.extend(x_i[t][3*i:3*i+3])
+            state.extend(rpy_i[t][3*i:3*i+3])
+            state.extend(x_dot_i[t][3*i:3*i+3])
+            state.extend(omega_i[t][3*i:3*i+3])
+
+        intermediate_states.append(np.asarray(state))
+        # intermediate_states.append(np.asarray([x_i[t][3*i:3*i+3].hstack(rpy_i[t][3*i:3*i+3]) for i in range(3)]))
+        t_out.append(t_array[t]+offset)
+
+    intermediate_states = np.asarray(intermediate_states).T
+    
+    t_out.append(t_out[-1]+offset)
+    
+    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, np.column_stack((initial_state, intermediate_states, final_state)))
     dircol.SetInitialTrajectory(PiecewisePolynomial(), initial_trajectory)
 
 
-
+    ###################
+    # SOLVER CACHEING #
+    ###################
     cache_file = "result_time_varying_lqr_3drones.npy"
     # Solve for trajectory
     if (os.path.exists(cache_file)):
@@ -303,6 +343,9 @@ def GenerateDirColTrajectory(diagram_plant):
     result = Solve(prog)
     assert result.is_success()
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
+    ###################
+    # SOLVER CACHEING #
+    ###################
 
 
 
@@ -348,24 +391,27 @@ def main():
     #sdf_path = 'sdf_models/worlds/default_kintreetest.sdf'
     sdf_path = 'sdf_models/worlds/default_drones.sdf'
     
-    print("Creating multibody system", end="...")
+    print("Creating multibody system")
     diagram_quad, logger = MakeMultibodyQuadrotor(sdf_path, meshcat)
-    print(" done")
 
     # Generate example state and input trajectories
-    print("Generating trajectory", end="...")
-    x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)     
-    print(" done")
+    if (os.path.exists('x_traj.npy') and os.path.exists('u_traj.npy')):
+        print("Loading trajectory")
+        x_trajectory = np.load('x_traj_time_varying_lqr_circle_3drones.npy')
+        u_trajectory = np.load('x_traj_time_varying_lqr_circle_3drones.npy')
+    else:
+        print("Generating trajectory")
+        x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)     
+        # pickle.dump( x_trajectory, open( "x_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )
+        # pickle.dump( y_trajectory, open( "y_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )
+    # print("done")
 
     # Make controller
-    print("Creating controller", end="...")
+    print("Creating controller")
     diagram_full = MakeQuadrotorController(diagram_quad, x_trajectory, u_trajectory)
-    print(" done")
 
     # # Show diagram
-    print("Showing diagram", end="...")
     utils.show_diagram(diagram_full)
-    print(" done")
 
     # Simulate
     # state_init = np.zeros(36,)
@@ -403,4 +449,6 @@ def main():
     # meshcat.DeleteAddedControls()
 
 if __name__ == "__main__":
-    main()      
+    main()
+
+
