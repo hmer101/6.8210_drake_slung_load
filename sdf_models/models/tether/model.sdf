@@ -3,7 +3,7 @@
     <link name='element_1'>
       <inertial>
         <pose>0.75 0 0 0 1.5707963267948966 0</pose>
-        <mass>0.0001</mass> <!--0.10000000000000001-->
+        <mass>0.01</mass> <!--0.10000000000000001-->
         <!--<inertia>
           <ixx>0.0</ixx>
           <ixy>0</ixy>
