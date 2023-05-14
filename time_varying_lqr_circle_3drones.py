@@ -34,6 +34,23 @@ from pydrake.all import(
 from underactuated import running_as_notebook
 from underactuated.scenarios import AddFloatingRpyJoint
 
+
+global global_initial_state
+global_initial_state= np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+global global_final_state
+global_final_state = np.asarray([2.0, 0.0, 2.0, 0.0, 0.0, 0.0]+
+                        [-2.0, 2.0, 2.0, 0.0, 0.0, 0.0]+
+                        [-2.0, -2.0, 2.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+
 NAME_SWARM = "swarm"
 NAME_PROPS = "propellers"
 NAME_DIAGRAM_QUAD = "quads_diagram"
@@ -172,13 +189,8 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
 
         ## Set plant at linearization point
         # States
-        final_state = np.asarray([2.0, 0.0, 2.0, 0.0, 0.0, 0.0]+
-                        [-2.0, 2.0, 2.0, 0.0, 0.0, 0.0]+
-                        [-2.0, -2.0, 2.0, 0.0, 0.0, 0.0]+
-                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        drone_context.SetContinuousState(final_state) # TODO maybe lol get_mutable_continuous_state_vector
+        global global_final_state
+        drone_context.SetContinuousState(global_final_state) # TODO maybe lol get_mutable_continuous_state_vector
 
         # Inputs
         input_dim = NUM_DRONES*PROPS_PER_DRONE 
@@ -210,15 +222,19 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
 
         return LinearQuadraticRegulator(A, B, Q, R)
 
+
     # Get Qf from infinite horizon LQR controller
-    (K, S) = QuadrotorInfiniteHorizonLQR(diagram_plant)
+    inf_horizon_lqr = True
+    if inf_horizon_lqr:
+        (K, S) = QuadrotorInfiniteHorizonLQR(diagram_plant)
     # print(S)
 
     # Set options
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
     options.x0 = x_traj
     options.u0 = u_traj
-    options.Qf = 20*S
+    if inf_horizon_lqr:
+        options.Qf = 20*S
 
     lqr_finite_horizon_controller = QuadrotorFiniteHorizonLQR(diagram_plant, options)
 
@@ -250,66 +266,50 @@ def GenerateDirColTrajectory(diagram_plant):
     dircol = DirectCollocation(
         diagram_plant,
         diagram_context,
-        num_time_samples=21,
+        num_time_samples=51,
         minimum_timestep=0.05,
         maximum_timestep=0.2
     )
-
     # Create constraints on trajectory here 
     prog = dircol.prog()
-
     dircol.AddEqualTimeIntervalsConstraints()
-
     lift_force_limit = 10.0
     u = dircol.input()
     for k in range(np.size(u)):
         dircol.AddConstraintToAllKnotPoints(-lift_force_limit <= u[k])
         dircol.AddConstraintToAllKnotPoints(u[k] <= lift_force_limit)
-
-    initial_state = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
-
-    final_state = np.asarray([2.0, 2.0, 3.0, 0.0, 0.0, 0.0]+
-                            [-1.0, 1.0, 2.0, 0.0, 0.0, 0.0]+
-                            [-2.5, -2.5, 1.5, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    prog.AddBoundingBoxConstraint(final_state, final_state, dircol.final_state())
-
     # Cost functions on control effort and time duration
     R = 10
     dircol.AddRunningCost(R*(u[0]**2 + u[1]**2 + u[2]**2 + u[3]**2 + u[4]**2 + u[5]**2 + u[6]**2 + u[7]**2 + u[8]**2 + u[9]**2 + u[10]**2 + u[11]**2))
-
     dircol.AddFinalCost(dircol.time()) 
-
-    # Define initial trajectory
 
     ##################
     # DIFF FLATNESS
     ##################
-
-    timesteps = 50
+    timesteps = 21
     dt = .1
     tf = timesteps*dt
-    
+
+    include_global_init = True
+    include_global_final = True
+
     zpp = diff_flatness.MultiRotorTrajectory.circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
     x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = diff_flatness.MultiRotorTrajectory.solve_for_states_n_rotors(zpp, 
                                                                                     3, tf=tf, timesteps=timesteps)
-
     intermediate_states = []
-    t_out = [0]
     offset = 5 # time to get to the beginning and end states
+    int_offset = 5 # intermediate offset
+    final_offset = 10
+    if include_global_init:
+        t_out = [0]
+        int_offset = offset
+    else:
+        t_out = []
+        int_offset = 0
     for t in range(len(x_i)):
         # x_i[t] = [ x_0, y_0, z_0, x_1, y_1, ... y_n, z_n]
         # rpy_i[t] = [ r_0, p_0, yaw_0, r_1, p_1, ... p_n, yaw_n]
-
         # x_i[t][3*i:3*i+3] --> [x_i, y_i, z_i] at timestep number t
         state = []
         for i in range(3):
@@ -317,36 +317,55 @@ def GenerateDirColTrajectory(diagram_plant):
             state.extend(rpy_i[t][3*i:3*i+3])
             state.extend(x_dot_i[t][3*i:3*i+3])
             state.extend(omega_i[t][3*i:3*i+3])
-
         intermediate_states.append(np.asarray(state))
-        # intermediate_states.append(np.asarray([x_i[t][3*i:3*i+3].hstack(rpy_i[t][3*i:3*i+3]) for i in range(3)]))
-        t_out.append(t_array[t]+offset)
+        t_out.append(t_array[t]+int_offset)
 
-    intermediate_states = np.asarray(intermediate_states).T
-    
-    t_out.append(t_out[-1]+offset)
-    
-    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, np.column_stack((initial_state, intermediate_states, final_state)))
+    global global_final_state
+    global global_initial_state
+
+    states_out = np.asarray(intermediate_states).T
+
+    if include_global_init:
+        states_out = np.column_stack((global_initial_state, states_out))
+        initial_state = global_initial_state
+    else:
+        initial_state = intermediate_states[0]
+        global_initial_state = initial_state
+
+
+    if include_global_final:
+        newtf = t_out[len(t_out)-1]+final_offset
+        t_out.append(newtf)
+        # OLD_final_state = final_state
+        # NEW_final_state = global_final_state
+        final_state = global_final_state
+        states_out = np.column_stack((states_out, global_final_state))
+    else:
+        final_state = intermediate_states[-1]
+        global_final_state = final_state
+
+    assert len(t_out) == len(states_out[0]), "time and state dimension mismatch"
+    prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
+    prog.AddBoundingBoxConstraint(final_state, final_state, dircol.final_state())
+    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, states_out)
     dircol.SetInitialTrajectory(PiecewisePolynomial(), initial_trajectory)
 
 
     ###################
     # SOLVER CACHEING #
     ###################
-    cache_file = "result_time_varying_lqr_3drones.npy"
+    cache_file = "result_time_varying_lqr_3drones_cache.npy"
     # Solve for trajectory
     if (os.path.exists(cache_file)):
         print(f" loading initial guess from file {cache_file}")
         with open(cache_file, 'rb') as f:
             data = pickle.load(f)
-        prog.SetInitialGuessForAllVariables(data)
+        # prog.SetInitialGuessForAllVariables(data)
+    else:
+        print(f"Solving trajectory optimization problem...")
     result = Solve(prog)
     assert result.is_success()
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
-    ###################
-    # SOLVER CACHEING #
-    ###################
-
 
 
     # Extract trajectory information
@@ -354,13 +373,13 @@ def GenerateDirColTrajectory(diagram_plant):
     u_traj = dircol.ReconstructInputTrajectory(result)
 
     # Uncomment block below to visualize
-    times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
-    u_values = u_traj.vector_values(times)
-    x_values = x_traj.vector_values(times)
-    xyz_values1 = x_values[0:3, :]
-    xyz_values2 = x_values[6:9, :]
-    xyz_values3 = x_values[12:15, :]
-    rpy_values = x_values[3:6, :]
+    # times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
+    # u_values = u_traj.vector_values(times)
+    # x_values = x_traj.vector_values(times)
+    # xyz_values1 = x_values[0:3, :]
+    # xyz_values2 = x_values[6:9, :]
+    # xyz_values3 = x_values[12:15, :]
+    # rpy_values = x_values[3:6, :]
     # vxyz_values = x_values[6:9, :]
     # vrpy_values = x_values[9:12, :]
 
@@ -380,7 +399,7 @@ def GenerateDirColTrajectory(diagram_plant):
     # ax[2].set_xlabel("Time(s)")
     # plt.show()
 
-    return x_traj, u_traj
+    return x_traj, u_traj, t_out
 
 
 def main():
@@ -395,15 +414,11 @@ def main():
     diagram_quad, logger = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Generate example state and input trajectories
-    if (os.path.exists('x_traj.npy') and os.path.exists('u_traj.npy')):
-        print("Loading trajectory")
-        x_trajectory = np.load('x_traj_time_varying_lqr_circle_3drones.npy')
-        u_trajectory = np.load('x_traj_time_varying_lqr_circle_3drones.npy')
-    else:
-        print("Generating trajectory")
-        x_trajectory, u_trajectory = GenerateDirColTrajectory(diagram_quad)     
+    x_trajectory, u_trajectory, t_out = GenerateDirColTrajectory(diagram_quad)  
+        
+        # pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )   
         # pickle.dump( x_trajectory, open( "x_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )
-        # pickle.dump( y_trajectory, open( "y_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )
+        # pickle.dump( u_trajectory, open( "u_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )
     # print("done")
 
     # Make controller
@@ -415,13 +430,16 @@ def main():
 
     # Simulate
     # state_init = np.zeros(36,)
-    state_init = np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=0.75)
+    global global_initial_state
+    global global_final_state
+    state_init = global_initial_state # None #np.asarray([2.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [-2.0, 2.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [-2.0, -2.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]+
+    #                         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    print(f"Simulation should last {t_out[-1]} seconds")
+    utils.simulate_diagram(diagram_full, state_init, meshcat, realtime_rate=1.0, sleep_time=0.1)
 
     # simulator = Simulator(diagram_full)
     # print("here0")
