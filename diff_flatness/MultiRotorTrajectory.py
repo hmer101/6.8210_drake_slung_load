@@ -427,26 +427,31 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             ###############################################
 
             # Linear
-            vel = (X_i[t] - X_i[t+1])/dt
-            accel = (Xdot_i[t] - Xdot_i[t+1])/dt
-            lhs_v = vel.tolist()
-            rhs_v = Xdot_i[t].tolist()
-            lhs_a = accel.tolist()
-            rhs_a = Xddot_i[t].tolist()
-            # for j in range(len(rhs_v)):
-                # prog.AddConstraint(lhs_v[j] == rhs_v[j])
-                # prog.AddConstraint(lhs_a[j] == rhs_a[j])
-            
-            # Angular
-            avel = (rpy_i[t] - rpy_i[t+1])/dt
-            aaccel = (Omega_i[t] - Omega_i[t+1])/dt
-            lhs_av = avel.tolist()
-            rhs_av = Omega_i[t].tolist()
-            lhs_aa = aaccel.tolist()
-            rhs_aa = Omegadot_i[t].tolist()
-            # for j in range(len(rhs_av)):
-                # prog.AddConstraint(lhs_av[j] == rhs_av[j])
-                # prog.AddConstraint(lhs_aa[j] == rhs_aa[j])
+            if (t>0):
+                vel = (X_i[t-1] - X_i[t+1])/dt + Xddot_i[t]*dt
+                # prog.AddQuadraticCost((vel - Xdot_i[t]).dot(vel - Xdot_i[t]))
+                # accel = (Xdot_i[t] - Xdot_i[t+1])/dt
+                # lhs_v = vel.tolist()
+                # rhs_v = Xdot_i[t].tolist()
+                # lhs_a = accel.tolist()
+                # rhs_a = Xddot_i[t].tolist()
+                # for j in range(len(rhs_v)):
+                #     prog.AddConstraint(lhs_v[j] == rhs_v[j])
+                    # prog.AddConstraint(lhs_a[j] == rhs_a[j])
+                
+                # # Angular
+                avel = (rpy_i[t-1] - rpy_i[t+1])/dt
+                ave_a = (rpy_i[t-1] + rpy_i[t+1])*0.5
+                # prog.AddQuadraticCost((avel - Omega_i[t]).dot(avel - Omega_i[t]))
+                prog.AddQuadraticCost((ave_a - rpy_i[t]).dot(ave_a - rpy_i[t]))
+                # aaccel = (Omega_i[t] - Omega_i[t+1])/dt
+                # lhs_av = avel.tolist()
+                # rhs_av = Omega_i[t].tolist()
+                # lhs_aa = aaccel.tolist()
+                # rhs_aa = Omegadot_i[t].tolist()
+                # # for j in range(len(rhs_av)):
+                #     # prog.AddConstraint(lhs_av[j] == rhs_av[j])
+                #     # prog.AddConstraint(lhs_aa[j] == rhs_aa[j])
             
             # Load yaw and its derivatives
             prog.AddConstraint(rpy_i[t][3*i+2]           == zpp.eval(t)  [3*n+i])
@@ -515,9 +520,6 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         assert len(lhs_m) == 3, "Error, load lhs_m != 3"
         assert len(rhs_m) == 3, "Error, load rhs_m != 3"
 
-        deltaU = u[t+1] - u[t]
-        u_jerk = umax/3.0
-        prog.AddLinearConstraint(deltaU, [-u_jerk]*len(deltaU), [u_jerk]*len(deltaU))
 
         #####################################
         #              Lambda               #

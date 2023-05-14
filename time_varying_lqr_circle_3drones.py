@@ -266,7 +266,7 @@ def GenerateDirColTrajectory(diagram_plant):
     dircol = DirectCollocation(
         diagram_plant,
         diagram_context,
-        num_time_samples=21,
+        num_time_samples=51,
         minimum_timestep=0.05,
         maximum_timestep=0.2
     )
@@ -286,7 +286,7 @@ def GenerateDirColTrajectory(diagram_plant):
     ##################
     # DIFF FLATNESS
     ##################
-    timesteps = 51
+    timesteps = 21
     dt = .1
     tf = timesteps*dt
 
@@ -360,7 +360,7 @@ def GenerateDirColTrajectory(diagram_plant):
         print(f" loading initial guess from file {cache_file}")
         with open(cache_file, 'rb') as f:
             data = pickle.load(f)
-        prog.SetInitialGuessForAllVariables(data)
+        # prog.SetInitialGuessForAllVariables(data)
     else:
         print(f"Solving trajectory optimization problem...")
     result = Solve(prog)
