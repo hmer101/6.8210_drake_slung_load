@@ -7,7 +7,7 @@
     <!-- Define properties -->
     <xacro:property name="tether_length" value="1.5" />
     <xacro:property name="tether_radius" value="0.01" />
-    <xacro:property name="tether_mass" value="0.1" />
+    <xacro:property name="tether_mass" value="0.001" />
     <xacro:property name="num_elements" value="1" />
 
     <xacro:property name="elem_length_main" value="${tether_length/num_elements}" />

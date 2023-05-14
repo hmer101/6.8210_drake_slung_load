@@ -63,10 +63,17 @@ def MakeMultibodyQuadrotor(sdf_path, meshcat):
 
     # Note: Rotors 0 and 1 rotate one way and rotors 2 and 3 rotate the other.
     prop_info = [
-        PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, kM), # rotor 0
-        PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, kM), # rotor 1
-        PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, -kM), # rotor 2 cw
-        PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, -kM), # rotor 3 cw
+        #PropellerInfo(body_index, RigidTransform([0, 0, 0]), kF, 0),
+
+        # PropellerInfo(body_index, RigidTransform([L, -L, 0]), kF, 0), # rotor 0
+        # PropellerInfo(body_index, RigidTransform([-L, L, 0]), kF, 0), # rotor 1
+        # PropellerInfo(body_index, RigidTransform([L, L, 0]), kF, 0), # rotor 2 cw
+        # PropellerInfo(body_index, RigidTransform([-L, -L, 0]), kF, 0), # rotor 3 cw
+
+        PropellerInfo(body_index, RigidTransform([L, -L, 0.06]), kF, kM), # rotor 0
+        PropellerInfo(body_index, RigidTransform([-L, L, 0.06]), kF, kM), # rotor 1
+        PropellerInfo(body_index, RigidTransform([L, L, 0.06]), kF, -kM), # rotor 2 cw
+        PropellerInfo(body_index, RigidTransform([-L, -L, 0.06]), kF, -kM), # rotor 3 cw
     ]
 
     ## Connect diagram
@@ -112,6 +119,7 @@ def MakeQuadrotorController(diagram_plant):
         # Inputs
         drone_mass = drone_sys.CalcTotalMass(drone_context)
         g = drone_sys.gravity_field().kDefaultStrength
+        #diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1]))
         diagram_plant.get_input_port().FixValue(diagram_context, drone_mass * g / 4. * np.array([1, 1, 1, 1])) # TODO: U0 Different for when carrying load probably
 
         # Linearize and get A and B matrices for LQR controller
