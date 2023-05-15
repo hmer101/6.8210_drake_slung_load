@@ -29,7 +29,7 @@ from pydrake.all import (
 #     # QuadrotorPlant,
 #     # StabilizingLQRController,
 # )
-from pydrake.solvers import MathematicalProgram, Solve
+from pydrake.solvers import MathematicalProgram, Solve, SnoptSolver
 
 # from underactuated import ConfigureParser, running_as_notebook
 # from underactuated.meshcat_utils import MeshcatSliders
@@ -38,19 +38,139 @@ from pydrake.solvers import MathematicalProgram, Solve
 # if running_as_notebook:
 #     mpld3.enable_notebook()
 
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+
+
+def animate_trajectories(trajectories, legend=None, interval=50):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    if not(legend):
+        legend = [f'Trajectory {i}' for i in range(len(trajectories))]
+    lines = [ax.plot([], [], [], label=legend[i])[0] for i in range(len(trajectories))]
+    start_points = [ax.scatter([], [], [], color='g') for _ in range(len(trajectories))]
+    end_points = [ax.scatter([], [], [], color='r') for _ in range(len(trajectories))]
+
+    def init():
+        ax.set_xlim([min(min(traj[0]) for traj in trajectories), max(max(traj[0]) for traj in trajectories)])
+        ax.set_ylim([min(min(traj[1]) for traj in trajectories), max(max(traj[1]) for traj in trajectories)])
+        ax.set_zlim([min(min(traj[2]) for traj in trajectories), max(max(traj[2]) for traj in trajectories)])
+        return lines + start_points + end_points
+
+    def update(i):
+        for j, line in enumerate(lines):
+            line.set_data(trajectories[j][0][:i], trajectories[j][1][:i])
+            line.set_3d_properties(trajectories[j][2][:i])
+            start_points[j]._offsets3d = (trajectories[j][0][:1], trajectories[j][1][:1], trajectories[j][2][:1])
+            end_points[j]._offsets3d = (trajectories[j][0][i-1:i], trajectories[j][1][i-1:i], trajectories[j][2][i-1:i])
+        return lines + start_points + end_points
+
+    ani = FuncAnimation(fig, update, frames=np.arange(1, len(trajectories[0][0])), init_func=init, blit=True, interval=interval)
+    plt.legend()
+    plt.show()
 
 
 
-def plot_trajectories(arr, x=-1):
+def plot_trajectories(arr, x=-1, legend=['x', 'y', 'z'], title=None, xlabel="Time (s)", ylabel=None, xscale=.1):
     if (x==-1):
         for x in range(len(arr[0])):
             arr_list = [arr[t][x] for t in range(len(arr))]
-            plt.plot(arr_list[:])
+            plt.plot([i * xscale for i in range(len(arr_list))], arr_list[:], label=legend[x])
     else: 
         arr_list = [arr[t][x] for t in range(len(arr))]
-        plt.plot(arr_list[:])
+        plt.plot([i * xscale for i in range(len(arr_list))], arr_list[:], label=legend[x])
+    if title:
+        plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    plt.legend()
+    plt.grid()
     plt.show()
 
+def plot_flat_trajectory(x_values, y_values, title=None, xlabel=None, ylabel=None):
+    plt.plot(x_values, y_values)
+    plt.scatter(x_values[0], y_values[0], color='g', label='Start')
+    plt.scatter(x_values[-1], y_values[-1], color='r', label='End')
+    if title:
+        plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+
+def plot_trajectories_3d(trajectories_3d, legend=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    if not legend:
+        legend = [f'Trajectory {i+1}' for i in range(len(trajectories_3d))]
+    for i, trajectory in enumerate(trajectories_3d):
+        x_values, y_values, z_values = trajectory.T
+        ax.plot(x_values, y_values, z_values, label=legend[i])
+        ax.scatter(x_values[0], y_values[0], z_values[0], color='g')
+        ax.scatter(x_values[-1], y_values[-1], z_values[-1], color='r')
+    ax.set_xlim([min(min(traj[:, 0]) for traj in trajectories_3d), max(max(traj[:, 0]) for traj in trajectories_3d)])
+    ax.set_ylim([min(min(traj[:, 1]) for traj in trajectories_3d), max(max(traj[:, 1]) for traj in trajectories_3d)])
+    ax.set_zlim([min(min(traj[:, 2]) for traj in trajectories_3d), max(max(traj[:, 2]) for traj in trajectories_3d)])
+    plt.legend()
+    plt.show()
+
+
+
+def animate_trajectories(trajectories_3d, legend=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    if not legend:
+        legend = [f'Trajectory {i+1}' for i in range(len(trajectories_3d))]
+    lines = [ax.plot([], [], [], label=legend[i])[0] for i in range(len(trajectories_3d))]
+    start_points = [ax.scatter([], [], [], color='g') for _ in range(len(trajectories_3d))]
+    # end_points = [ax.scatter([], [], [], color='r') for _ in range(len(trajectories_3d))]
+
+    def init():
+        ax.set_xlim([min(min(traj[:, 0]) for traj in trajectories_3d), max(max(traj[:, 0]) for traj in trajectories_3d)])
+        ax.set_ylim([min(min(traj[:, 1]) for traj in trajectories_3d), max(max(traj[:, 1]) for traj in trajectories_3d)])
+        ax.set_zlim([min(min(traj[:, 2]) for traj in trajectories_3d), max(max(traj[:, 2]) for traj in trajectories_3d)])
+        return lines + start_points #+ end_points
+
+    def update(i):
+        for j, line in enumerate(lines):
+            x_values, y_values, z_values = trajectories_3d[j].T
+            line.set_data(x_values[:i], y_values[:i])
+            line.set_3d_properties(z_values[:i])
+            start_points[j]._offsets3d = (x_values[:1], y_values[:1], z_values[:1])
+            # end_points[j]._offsets3d = (x_values[i-1:i], y_values[i-1:i], z_values[i-1:i])
+        return lines + start_points #+ end_points
+
+    ani = FuncAnimation(fig, update, frames=np.arange(1, len(trajectories_3d[0])), init_func=init, blit=True)
+    plt.legend()
+    plt.show()
+
+
+
+def plot_multiple_flat_trajectories(trajectories, title=None, xlabel=None, ylabel=None, legend=None):
+    for i, trajectory in enumerate(trajectories):
+        x_values, y_values = trajectory
+        if legend:
+            plt.plot(x_values, y_values, label=legend[i])
+        else:
+            plt.plot(x_values, y_values)
+        plt.scatter(x_values[0], y_values[0], color='g')
+        plt.scatter(x_values[-1], y_values[-1], color='r')
+    if title:
+        plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    if legend:
+        plt.legend()
+    plt.grid()
+    plt.show()
 
 
 # for 4 quadrotors with a load
@@ -106,28 +226,30 @@ def circle_constraints_n_rotors(zpp, tf, n, lam_min, lam_max, amplitude=1, diff_
     psi_max = [0] * n
     assert (len(psi_min) == n), "error, psi_min length incorrect"
     # Init condition
-    zpp.add_constraint(t=0, derivative_order=1, lb=np.zeros(dof))
+    # zpp.add_constraint(t=0, derivative_order=0, lb=np.zeros(dof))
+    # zpp.add_constraint(t=0, derivative_order=1, lb=np.zeros(dof))
 
 
     # Intermediate conditions
     for ti in range(diff_solver_samples):
         ratio = (ti)/diff_solver_samples
         x = ratio * 2*np.pi
-        tol = 0.1
+        tol = 0.01
         # #      X lb and ub,       Y lb and ub,      Z,        hdg
         lb = [amp*np.cos(x)+amp-tol,   amp*np.sin(x)+amp-tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_min + psi_min
         ub = [amp*np.cos(x)+amp+tol,   amp*np.sin(x)+amp+tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_max + psi_max # Y --> amp*np.sin(x)+amp
 
         # Trivial example for now
-        # lb = [0,      0,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_min + psi_min
-        # ub = [0,      0,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_max + psi_max # Y --> amp*np.sin(x)+amp
+        # lb = [0,      0-tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_min + psi_min
+        # ub = [0,      0+tol,        altitute_l,    hdg_l, pitch_l, yaw_l] + lambda_max + psi_max # Y --> amp*np.sin(x)+amp
 
         assert len(lb) == dof, f"Length of lb should equal DOF=n={n}, got: {len(lb)}"
         assert len(ub) == dof, f"Length of ub should equal DOF=n={n}, got: {len(ub)}"
         zpp.add_constraint(t=tf*ratio, derivative_order=0, lb=lb, ub=ub)
 
     # Final conditions (stationary)
-    zpp.add_constraint(t=tf, derivative_order=1, lb=np.zeros(dof))
+    # zpp.add_constraint(t=tf, derivative_order=0, lb=np.zeros(dof))
+    # zpp.add_constraint(t=tf, derivative_order=1, lb=np.zeros(dof))
 
 
 
@@ -248,10 +370,10 @@ class PPTrajectory:
         cache_file = "ppt_trajectory_solution.npy"
         # Solve for trajectory
         if (os.path.exists(cache_file)):
-            print(f" loading initial guess from file {cache_file}")
+            # print(f" loading initial guess from file {cache_file}")
             with open(cache_file, 'rb') as f:
                 data = pickle.load(f)
-            self.prog.SetInitialGuessForAllVariables(data)
+            # self.prog.SetInitialGuessForAllVariables(data)
         result = Solve(self.prog)
         assert result.is_success()
         pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
@@ -259,55 +381,6 @@ class PPTrajectory:
         
         self.result = Solve(self.prog)
         return self.result.is_success()
-
-
-
-def show_traj(z):
-    ax.plot(z[0, :], z[1, :])
-
-    for t in np.linspace(0, tf, 10):
-        x = zpp.eval(t)
-        xddot = zpp.eval(t, 2)
-        
-        # Use x, xdot, xddot to solve for other constraints
-        theta = np.arctan2(-xddot[0], (xddot[1] + 9.81))
-
-
-        v = Quadrotor2DVisualizer(ax=ax)
-        context = v.CreateDefaultContext()
-        v.get_input_port(0).FixValue(context, [x[0], x[1], theta, 0, 0, 0])
-        v.draw(context)
-
-    # show_objects(ax)
-    ax.set_xlim([-1, 7])
-    ax.set_ylim([-1, 5])
-    ax.set_title("")
-
-if False:  # May be useful for debugging
-    t = np.linspace(0, tf, 100)
-    z = np.zeros((2, len(t)))
-    knots = np.zeros((2, len(zpp.sample_times)))
-    fig, ax = plt.subplots(zpp.degree + 1, 1)
-    for deg in range(zpp.degree + 1):
-        for i in range(len(t)):
-            z[:, i] = zpp.eval(t[i], deg)
-        for i in range(len(zpp.sample_times)):
-            knots[:, i] = zpp.eval(zpp.sample_times[i], deg)
-        ax[deg].plot(t, z.transpose())
-        ax[deg].plot(zpp.sample_times, knots.transpose(), ".")
-        ax[deg].set_xlabel("t (sec)")
-        ax[deg].set_ylabel("z deriv " + str(deg))
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -322,6 +395,14 @@ if False:  # May be useful for debugging
 def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     print(f"solving states for {n} quadrotors using {timesteps} timesteps with tf={tf}")
 
+    enable_delta_u_cost = False
+    enable_delta_x_cost = False
+    enable_delta_r_cost = False
+    seed_solver = True
+    major_tol = 1e-2
+    minor_tol = 1e-2
+
+
     ###############################
     #  Information and constants  #
     ###############################
@@ -330,33 +411,67 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     # How to pull from z:
     # x = zpp.eval(t) 
     # xddot = zpp.eval(t, 2)
-    # Tiqi = [0,0,0] # quadrotor tension vector (with direction)
+    # Tiqi = [0,0,0] # tension vector (acting on quadrotor)
     ###############################
     #   Constants & Conversions   #
     ###############################
     tcount = timesteps
     dt = tf/tcount
     g= 9.81
+    e3 = np.array([0,0,1]) # z vector
 
-    m = [0.016076923076923075]*n # quadrotor mass (copied from model.sdf)
-    umax = 10/4
-    J = []
-    for i in range(n):
-        J.append(np.diag([3.8464910483993325e-07, 2.6115851691700804e-05, 2.649858234714004e-05])) # quadrotor inertia (copied from model.sdf)
-    m_L = .0001
-    J_L = np.diag([3.8464910483993325e-07, 2.6115851691700804e-05, 2.649858234714004e-05])*m_L
+
+    ###############################
+    # Load & Drone Dynamics       #
+    ###############################
+
     # distance from anchor point to drone
     rope_len = 0.174  # Length for arms (m)
     # vectors from the load's COM to the anchor point
     anchor_points = 0.5 * np.array([ np.array([ 0,  1,  1]),
-                                np.array([-1, -1,  1]),
-                                np.array([-1,  1,  1])])
+                                    np.array([-1, -1,  1]),
+                                    np.array([-1,  1,  1])])
+    
+    # 3D vector distances from drone's COM to each rotor's COM (from sdf_models/x500/model.sdf)
+    rotor_distances = np.array([np.array([-0.174, -0.174, 0.06]),np.array([-0.174, 0.174, 0.06]),np.array([0.174, 0.174, 0.06]),np.array([0.174, -0.174, 0.06])])
+    
+    # each individual rotor (4 per drone, currently assumed to be identical, but can be changed as needed)
+    m_rotor = 0.016076923076923075
+    J_rotors = [3.8464910483993325e-07, 2.6115851691700804e-05, 2.649858234714004e-05]
+    # base of the drone
+    m_base = 2.0
+    J_base = [0.02166666666666667, 0.02166666666666667, 0.04000000000000001]
+    # total mass of the drone
+    m = [m_rotor*4+m_base]*n
+    # inertia of the drone's body using parallel axis theorem
+    J_drone = [J_base[0]+m_rotor*rotor_distances[0][0]**2, J_base[1]+m_rotor*rotor_distances[0][1]**2, J_base[2]+m_rotor*rotor_distances[0][2]**2]
+    J = []
+    for i in range(n):
+        J.append(np.diag(J_drone)) # quadrotor inertia (copied from model.sdf)
+    
+    # load mass & inertia (semi-arbitrary for now)
+    m_L = 1.0 # load mass
+    J_L = np.diag(J_drone)*m_L/m[0]
 
-    e3 = np.array([0,0,1]) # z vector
+    # Rotor positions & directions
+    #
+    #                         ^  y
+    #  ccw  1    2  cw        |
+    #         \ /             |_______> x
+    #         / \
+    #   ccw  0   3  cw
+    #
+    # Thruster info
     thrust_ratio = 1.0
     moment_ratio = 0.0245
+    umax = 10 # maximum commanded thrust
     # used to convert u1 u2 u3 u4 to Tx Ty and Tz
-    u2m = moment_ratio * np.array([[0, 1, 0, -1], [1, 0, -1, 0],[-1, 1, -1, 1]])
+    # assumes vertical rotors with directions ccw, ccw, cw, cw
+    u2m = np.array([[rotor_distances[0][0], rotor_distances[1][0], rotor_distances[2][0], rotor_distances[3][0]], 
+                    [rotor_distances[0][1], rotor_distances[1][1], rotor_distances[2][1], rotor_distances[3][1]],
+                    [moment_ratio, moment_ratio, -moment_ratio, -moment_ratio]])
+
+
     ###############################
     #           Unknowns          #
     ###############################
@@ -381,12 +496,17 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     # [   0           1                  j         ]
     lambda_m = prog.NewContinuousVariables(tcount, 3*n-6, name="lambda_m")  # lambda
 
-
+    ############################################################
+    # Z, Zdot, Zddot. Knowns for differentially flat variables #
+    ############################################################
     no_d  = [zpp.eval(t*dt)    for t in range(tcount)]
     one_d = [zpp.eval(t*dt,1)  for t in range(tcount)]
     two_d = [zpp.eval(t*dt,2)  for t in range(tcount)]
+
+    # List of each timestep. 't' is used as an index for refrencing the actual times in the list below
     t_array = [t*dt for t in range(tcount)]
  
+    # NOT computing the final u
     for t in range(tcount-1):
         # x,y,z, roll, pitch, yaw positions, velocities, and accelerations of load
         XL     = no_d[t][0:3]
@@ -396,15 +516,19 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         OmegaL     = one_d[t][3:6]
         OmegadotL  = two_d[t][3:6]
 
+        # Converts load oriention to a rotation matrix
         r_L = rotation_matrix(RL)
 
         assert type(XL) == type(np.array([])), "Error, XL not a numpy array"
 
-        max_angle = 0.4*(np.pi/4)
+        # Drones cannot angle more than 90*max_angle_pct degrees (enforces more realistic solutions)
+        max_angle_pct = 0.4
+        max_angle = max_angle_pct*(np.pi/4)
+        prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
         prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
 
-        # Input constraints
-        prog.AddLinearConstraint(u[t], [0]*len(u[t]), [umax]*len(u[t]))
+
+        prog.AddLinearConstraint(u[t], [umax/10]*(4*n), [umax]*(4*n))
 
         for i in range(n):
             # Rotation matrix of quadrotor i wrt earth
@@ -412,53 +536,54 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             assert r_i.shape == (3,3), "Error, rotation matrix not 3x3 (r_i={r_i})"
 
 
+            # Tension must pull rotor down (negative z component)
+            # prog.AddLinearConstraint(Tiqi[t][3*i:3*i+3], [-100000,-100000,-100000], [100000,100000,5])
+            # prog.AddLinearConstraint(Tiqi[t][3*i+2:3*i+3], [-100000], [0])
+            # prog.AddQuadraticCost((Tiqi[t][3*i+2]-m_L*g/n)**2)
+
+
             #########################
             # Kinematic Constraints #
             #########################
             
-            # Rope must remain taut
-            vector = X_i[t][3*i:3*i+3] - (XL + anchor_points[i])
-            distance = np.linalg.norm(vector)
-            prog.AddConstraint(distance == rope_len)
+            # rope must remain taut (magnitude = rope_len), and
+            # Tension MUST be parallel to the rope. Proof for constraint as written below:
+            # rope_length_vector/||rope_length_vector||  == Tiqi/||Tiqi||
+            # rope_length_vector/rope_len                == Tiqi/||Tiqi||
+            # rope_length_vector                         == Tiqi/||Tiqi|| * rope_len
+            rope_length_vector = X_i[t][3*i:3*i+3] - (XL + anchor_points[i])
+            qi = Tiqi[t][3*i:3*i+3]/np.linalg.norm(Tiqi[t][3*i:3*i+3])
+            lhs_dist = (qi*rope_len).tolist()
+            rhs_dist = rope_length_vector.tolist()
+            for j in range(3):
+                prog.AddConstraint(lhs_dist[j] == rhs_dist[j])
 
 
             ###############################################
-            # Deone Velocity and acceleration constraints #
+            # Drone Velocity and acceleration constraints #
             ###############################################
 
             # Linear
             if (t>0):
-                vel = (X_i[t-1] - X_i[t+1])/dt + Xddot_i[t]*dt
-                # prog.AddQuadraticCost((vel - Xdot_i[t]).dot(vel - Xdot_i[t]))
-                # accel = (Xdot_i[t] - Xdot_i[t+1])/dt
-                # lhs_v = vel.tolist()
-                # rhs_v = Xdot_i[t].tolist()
-                # lhs_a = accel.tolist()
-                # rhs_a = Xddot_i[t].tolist()
-                # for j in range(len(rhs_v)):
-                #     prog.AddConstraint(lhs_v[j] == rhs_v[j])
-                    # prog.AddConstraint(lhs_a[j] == rhs_a[j])
-                
-                # # Angular
-                avel = (rpy_i[t-1] - rpy_i[t+1])/dt
-                ave_a = (rpy_i[t-1] + rpy_i[t+1])*0.5
-                # prog.AddQuadraticCost((avel - Omega_i[t]).dot(avel - Omega_i[t]))
-                prog.AddQuadraticCost((ave_a - rpy_i[t]).dot(ave_a - rpy_i[t]))
-                # aaccel = (Omega_i[t] - Omega_i[t+1])/dt
-                # lhs_av = avel.tolist()
-                # rhs_av = Omega_i[t].tolist()
-                # lhs_aa = aaccel.tolist()
-                # rhs_aa = Omegadot_i[t].tolist()
-                # # for j in range(len(rhs_av)):
-                #     # prog.AddConstraint(lhs_av[j] == rhs_av[j])
-                #     # prog.AddConstraint(lhs_aa[j] == rhs_aa[j])
-            
+                # Linear position cost
+                if (enable_delta_x_cost):
+                    vel = (X_i[t-1] - X_i[t+1])/dt #+ Xddot_i[t]*dt
+                    prog.AddQuadraticCost((vel - Xdot_i[t]).dot(vel - Xdot_i[t]))
+                # Angular position cost
+                if (enable_delta_r_cost):
+                    ave_a = (rpy_i[t-1] + rpy_i[t+1])*0.5
+                    prog.AddQuadraticCost((ave_a - rpy_i[t]).dot(ave_a - rpy_i[t]))
+                # Input discontinuity cost
+                if (enable_delta_u_cost):
+                    ave_u = (u[t-1] + u[t+1])*0.5
+                    prog.AddQuadraticCost((ave_u - u[t]).dot(ave_u - u[t]) *0.1)
+                prog.AddQuadraticCost((m_L*g/(4*n) - u[t]).dot(m_L*g/(4*n) - u[t]))
+
             # Load yaw and its derivatives
             prog.AddConstraint(rpy_i[t][3*i+2]           == zpp.eval(t)  [3*n+i])
             prog.AddConstraint(Omega_i[t][3*i+2]         == zpp.eval(t,1)[3*n+i])
             prog.AddConstraint(Omegadot_i[t][3*i+2]      == zpp.eval(t,2)[3*n+i])
 
-                        
 
             #####################################
             #    Sum of forces on the drones    #
@@ -498,8 +623,8 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         lhs_f = m_L*XddotL
         tension = 0
         for i in range(n):
-            tension += r_L.dot(Tiqi[t][3*i:3*i+3])
-        rhs_f = -tension - m_L*g*e3
+            tension += r_L.dot(Tiqi[t][3*i:3*i+3]) #re-orient tension 
+        rhs_f = -tension - m_L*g*e3 #change direction of the tension, add gravity
         rhs_f = rhs_f.tolist()
         lhs_f = lhs_f.tolist()
         assert len(lhs_f) == 3, "Error, load lhs_f != 3"
@@ -530,10 +655,10 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         # Need to hard-code lambdas in for different numbers of quadcopters
             # [Tx_0    Ty_0    Tz_0   Tx_1 ... Tx_n   Ty_n   Tz_n]
             #   0        1       2      3  ... 3n+0   3n+1   3n+2
-        if (n == 3):
-            prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+0]) # x of copter 0
-            prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+1]) # y of copter 0
-            prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*1+0]) # x of copter 1
+        # if (n == 3):
+            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+0]) # x of copter 0
+            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+1]) # y of copter 0
+            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*1+0]) # x of copter 1
 
 
     # END OF LOOP THRU EACH TIMESTEP
@@ -549,23 +674,31 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
                         [0,  0,  rope_len]])
 
 
-
-
     cache_file = f"n_rotor_states_{tcount}steps_{dt}dt.npy"
     # Solve for trajectory
     if (os.path.exists(cache_file)):
-        print(f" loading initial guess from file {cache_file}")
-        with open(cache_file, 'rb') as f:
-            data = pickle.load(f)
-        prog.SetInitialGuessForAllVariables(data)
+        if (seed_solver):
+            print(f"\tloading initial guess from file {cache_file}")
+            with open(cache_file, 'rb') as f:
+                data = pickle.load(f)
+                prog.SetInitialGuessForAllVariables(data)
+        else:
+            print(f"\tNOT loading initial guess from cache file {cache_file}")
     else:
         print(f"No initial cached guess for {tcount} steps, {dt} dt")
-    result = Solve(prog)
+
+    solver = SnoptSolver()
+    prog.SetSolverOption(solver.solver_id(), "Feasibility tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Major feasibility tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Major optimality tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Minor feasibility tolerance", minor_tol)
+    prog.SetSolverOption(solver.solver_id(), "Minor optimality tolerance", minor_tol)
+    result = solver.Solve(prog)
 
     assert result.is_success(), "Error, solver failed to find a solution"
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
     
-    print(f" saving initial guess to file {cache_file}")
+    print(f"\tsaving initial guess to file {cache_file}")
     good = result.is_success()
 
     axis = 0
@@ -599,33 +732,64 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 if __name__ == "__main__":
 
     timesteps = 51
-    dt = .2
+    dt = .1
     tf = timesteps*dt
     zpp = circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
             discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
     x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = solve_for_states_n_rotors(zpp, 
                                                                                     3, tf=tf, timesteps=timesteps)
     
-    print("XL")
-    plot_trajectories(x_L)
-    print("Xi")
-    plot_trajectories(x_i)
-    print("x0")
-    plot_trajectories(x_i[:,0:3])
-    print("x1")
-    plot_trajectories(x_i[:,3:6])
-    print("x2")
-    plot_trajectories(x_i[:,6:9])
-    print("rpy_i")
-    plot_trajectories(rpy_i)
-    print("rpy_0")
-    plot_trajectories(rpy_i[:,0:3])
+    # no_d = [zpp.eval(t*dt)    for t in range(timesteps)]
+    # x_L_out     =  np.stack( [no_d[t][0:3] for t in range(timesteps)], axis=0)
+    
+    # print("XL")
+    # plot_trajectories(x_L, title="Load Position", ylabel="Position (m)")
+    # print("RL")
+    # plot_trajectories(r_L, title="Load Orientation", legend=["Roll","Pitch","Yaw"], ylabel="Angle (rad)")
+    # print("xi")
+    # plot_trajectories(x_i, title="Drone Positions", legend=["x0","y0","z0","x1","y1","z1","x2","y2","z2",], ylabel="Position (m)")
+
+
+    trajectories_3d=[x_L[:-2,:], x_i[:-2,0:3], x_i[:-2,3:6], x_i[:-2,6:9]]
+    legend=["Load","Drone 0","Drone 1","Drone 2"]
+    plot_trajectories_3d(trajectories_3d, legend=legend)
+    animate_trajectories(trajectories_3d, legend=legend)
+
+    # trajectories_2d=[[x_L[:-2,0], x_L[:-2,1]], [x_i[:-2,0], x_i[:-2,1]], [x_i[:-2,3], x_i[:-2,4]], [x_i[:-2,6], x_i[:-2,7]]]
+    # plot_multiple_flat_trajectories(trajectories_2d, title="Trajectories", xlabel="X (m)", ylabel="Y (m)", legend=["Load","Drone 0","Drone 1","Drone 2"])
+
+    
+    plot_trajectories(rpy_i[:,0:3], legend=["Roll","Pitch","Yaw"], title="Drone 0 Orientation", ylabel="Angle (rad)")
     print("rpy_1")
-    plot_trajectories(rpy_i[:,3:6])
+    plot_trajectories(rpy_i[:,3:6], legend=["Roll","Pitch","Yaw"], title="Drone 1 Orientation", ylabel="Angle (rad)")
     print("rpy_2")
-    plot_trajectories(rpy_i[:,6:9])
-    print("TiQi")
-    plot_trajectories(Tiqi)
-    print("u")
-    plot_trajectories(u_out)
+    plot_trajectories(rpy_i[:,6:9], legend=["Roll","Pitch","Yaw"], title="Drone 2 Orientation", ylabel="Angle (rad)")
+    print("TiQi 1")
+    plot_trajectories(Tiqi[:-2,0:3], title="Drone 0 Tension Vector", ylabel="Tension (N)")
+    print("TiQi 2")
+    plot_trajectories(Tiqi[:-2,3:6], title="Drone 1 Tension Vector", ylabel="Tension (N)")
+    print("TiQi 3")
+    plot_trajectories(Tiqi[:-2,6:9], title="Drone 2 Tension Vector", ylabel="Tension (N)")
+    print("u 1")
+    plot_trajectories(u_out[:,0:4], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 0 Rotor Forces", ylabel="Force (N)")
+    print("u 2")
+    plot_trajectories(u_out[:,4:8], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 1 Rotor Forces", ylabel="Force (N)")
+    print("u 3")
+    plot_trajectories(u_out[:,8:12], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 2 Rotor Forces", ylabel="Force (N)")
+
+
+
+
+
+    # plot_flat_trajectory(x_L[:-2,0], x_L[:-2,1], title="Load Trajectory", xlabel="X (m)", ylabel="Y (m)")
+    # plot_flat_trajectory(x_i[:-2,0], x_i[:-2,1], title="Drone 0 Trajectory", xlabel="X (m)", ylabel="Y (m)")
+    # plot_flat_trajectory(x_i[:-2,3], x_i[:-2,4], title="Drone 1 Trajectory", xlabel="X (m)", ylabel="Y (m)")
+    # plot_flat_trajectory(x_i[:-2,6], x_i[:-2,7], title="Drone 2 Trajectory", xlabel="X (m)", ylabel="Y (m)")
+    # print("x0")
+    # plot_trajectories(x_i[:,0:3], title="Drone 0 Position", ylabel="Position (m)")
+    # print("x1")
+    # plot_trajectories(x_i[:,3:6], title="Drone 1 Position", ylabel="Position (m)")
+    # print("x2")
+    # plot_trajectories(x_i[:,6:9], title="Drone 2 Position", ylabel="Position (m)")
+    # print("rpy_0")
     
