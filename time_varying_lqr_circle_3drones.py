@@ -18,6 +18,9 @@ from pydrake.all import(
     RigidTransform,
     Linearize,
     DirectCollocation,
+    # CompositeTrajectory,
+    SnoptSolver,
+    
     PiecewisePolynomial,
     Solve,
     Demultiplexer,
@@ -30,6 +33,21 @@ from pydrake.all import(
     FiniteHorizonLinearQuadraticRegulator,
     FiniteHorizonLinearQuadraticRegulatorOptions,
     MakeFiniteHorizonLinearQuadraticRegulator)
+
+from pydrake.math import BsplineBasis_
+from pydrake.trajectories import (
+    # BezierCurve_,
+    BsplineTrajectory_,
+    # CompositeTrajectory_,
+    PathParameterizedTrajectory_,
+    PiecewisePolynomial_,
+    PiecewisePose_,
+    PiecewiseQuaternionSlerp_,
+    StackedTrajectory_,
+    Trajectory,
+    Trajectory_
+)
+
 
 from underactuated import running_as_notebook
 from underactuated.scenarios import AddFloatingRpyJoint
@@ -231,8 +249,8 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
 
     # Set options
     options = FiniteHorizonLinearQuadraticRegulatorOptions()
-    options.x0 = x_traj
-    options.u0 = u_traj
+    options.xd = x_traj
+    options.ud = u_traj
     if inf_horizon_lqr:
         options.Qf = 20*S
 
@@ -260,54 +278,52 @@ def MakeQuadrotorController(diagram_plant, x_traj, u_traj):
 
 # Generates trajectories using direct collocation
 # Returns trajectory objects
-def GenerateDirColTrajectory(diagram_plant):
+def GenerateDiffFlatTrajectory(diagram_plant):
     diagram_context = diagram_plant.CreateDefaultContext() 
 
+    ##################
+    # DIFF FLATNESS
+    ##################
+    timesteps = 51
+    dt = .3
+    tf = timesteps*dt
+
+    zpp = diff_flatness.MultiRotorTrajectory.circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
+            discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
+    x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = diff_flatness.MultiRotorTrajectory.solve_for_states_n_rotors(zpp, 3, tf=tf, timesteps=timesteps)
+    ##########################################
+
+
+    ##################
+    # DirectCollocation
+    ##################
     dircol = DirectCollocation(
         diagram_plant,
         diagram_context,
-        num_time_samples=51,
-        minimum_timestep=0.05,
-        maximum_timestep=0.2
+        num_time_samples=timesteps,
+        minimum_timestep=dt/5.0,
+        maximum_timestep=dt*2
     )
     # Create constraints on trajectory here 
     prog = dircol.prog()
     dircol.AddEqualTimeIntervalsConstraints()
     lift_force_limit = 10.0
     u = dircol.input()
-    for k in range(np.size(u)):
-        dircol.AddConstraintToAllKnotPoints(-lift_force_limit <= u[k])
-        dircol.AddConstraintToAllKnotPoints(u[k] <= lift_force_limit)
+    # for k in range(np.size(u)):
+    #     dircol.AddConstraintToAllKnotPoints(-lift_force_limit <= u[k])
+    #     dircol.AddConstraintToAllKnotPoints(u[k] <= lift_force_limit)
     # Cost functions on control effort and time duration
     R = 10
     dircol.AddRunningCost(R*(u[0]**2 + u[1]**2 + u[2]**2 + u[3]**2 + u[4]**2 + u[5]**2 + u[6]**2 + u[7]**2 + u[8]**2 + u[9]**2 + u[10]**2 + u[11]**2))
     dircol.AddFinalCost(dircol.time()) 
 
-    ##################
-    # DIFF FLATNESS
-    ##################
-    timesteps = 21
-    dt = .1
-    tf = timesteps*dt
 
-    include_global_init = True
-    include_global_final = True
-
-    zpp = diff_flatness.MultiRotorTrajectory.circle_example_n_rotors(n=3, degree=6, continuity_degree=4, 
-            discretization_samples=timesteps, diff_solver_samples=7, tf=tf)
-    x_L,x_i, r_L,rpy_i, x_dot_i,x_dot_L, omega_i, Omega_L, u_out, Tiqi, t_array = diff_flatness.MultiRotorTrajectory.solve_for_states_n_rotors(zpp, 
-                                                                                    3, tf=tf, timesteps=timesteps)
+    
+    ##########################################
+    # Extracting points from diff flatness
     intermediate_states = []
-    offset = 5 # time to get to the beginning and end states
-    int_offset = 5 # intermediate offset
-    final_offset = 10
-    if include_global_init:
-        t_out = [0]
-        int_offset = offset
-    else:
-        t_out = []
-        int_offset = 0
-    for t in range(len(x_i)):
+    t_out = []
+    for t in range(0, len(x_i), 10):
         # x_i[t] = [ x_0, y_0, z_0, x_1, y_1, ... y_n, z_n]
         # rpy_i[t] = [ r_0, p_0, yaw_0, r_1, p_1, ... p_n, yaw_n]
         # x_i[t][3*i:3*i+3] --> [x_i, y_i, z_i] at timestep number t
@@ -318,52 +334,46 @@ def GenerateDirColTrajectory(diagram_plant):
             state.extend(x_dot_i[t][3*i:3*i+3])
             state.extend(omega_i[t][3*i:3*i+3])
         intermediate_states.append(np.asarray(state))
-        t_out.append(t_array[t]+int_offset)
-
-    global global_final_state
-    global global_initial_state
+        t_out.append(t_array[t]+0)
 
     states_out = np.asarray(intermediate_states).T
-
-    if include_global_init:
-        states_out = np.column_stack((global_initial_state, states_out))
-        initial_state = global_initial_state
-    else:
-        initial_state = intermediate_states[0]
-        global_initial_state = initial_state
+    inputs_out = np.asarray(u_out).T
 
 
-    if include_global_final:
-        newtf = t_out[len(t_out)-1]+final_offset
-        t_out.append(newtf)
-        # OLD_final_state = final_state
-        # NEW_final_state = global_final_state
-        final_state = global_final_state
-        states_out = np.column_stack((states_out, global_final_state))
-    else:
-        final_state = intermediate_states[-1]
-        global_final_state = final_state
 
-    assert len(t_out) == len(states_out[0]), "time and state dimension mismatch"
-    prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
-    prog.AddBoundingBoxConstraint(final_state, final_state, dircol.final_state())
-    initial_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, states_out)
-    dircol.SetInitialTrajectory(PiecewisePolynomial(), initial_trajectory)
+    # bspline = BsplineTrajectory_(basis=BsplineBasis_(degree=6, np.asarray(t_out)),
+    #                                 control_points=states_out)
+
+    # initial_state = states_out[:,0]
+    # final_state = states_out[:,-1]
+
+    # prog.AddBoundingBoxConstraint(initial_state, initial_state, dircol.initial_state())
+    # prog.AddBoundingBoxConstraint(final_state, final_state, dircol.final_state())
+
+    x0_trajectory = PiecewisePolynomial.FirstOrderHold(t_out, states_out)
+    # u0_trajectory = PiecewisePolynomial.FirstOrderHold(t_out[0:-1], inputs_out)
+    dircol.SetInitialTrajectory(PiecewisePolynomial(), x0_trajectory)
 
 
     ###################
     # SOLVER CACHEING #
     ###################
-    cache_file = "result_time_varying_lqr_3drones_cache.npy"
+    cache_file = "result_time_varying_lqr_circle_3drones.npy"
     # Solve for trajectory
     if (os.path.exists(cache_file)):
         print(f" loading initial guess from file {cache_file}")
         with open(cache_file, 'rb') as f:
             data = pickle.load(f)
         # prog.SetInitialGuessForAllVariables(data)
-    else:
-        print(f"Solving trajectory optimization problem...")
-    result = Solve(prog)
+    solver = SnoptSolver()
+    major_tol = 1e-3
+    minor_tol = 1e-3
+    prog.SetSolverOption(solver.solver_id(), "Feasibility tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Major feasibility tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Major optimality tolerance", major_tol)
+    prog.SetSolverOption(solver.solver_id(), "Minor feasibility tolerance", minor_tol)
+    prog.SetSolverOption(solver.solver_id(), "Minor optimality tolerance", minor_tol)
+    result = solver.Solve(prog)
     assert result.is_success()
     pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )
 
@@ -371,33 +381,6 @@ def GenerateDirColTrajectory(diagram_plant):
     # Extract trajectory information
     x_traj = dircol.ReconstructStateTrajectory(result)
     u_traj = dircol.ReconstructInputTrajectory(result)
-
-    # Uncomment block below to visualize
-    # times = np.linspace(u_traj.start_time(), u_traj.end_time(), 100)
-    # u_values = u_traj.vector_values(times)
-    # x_values = x_traj.vector_values(times)
-    # xyz_values1 = x_values[0:3, :]
-    # xyz_values2 = x_values[6:9, :]
-    # xyz_values3 = x_values[12:15, :]
-    # rpy_values = x_values[3:6, :]
-    # vxyz_values = x_values[6:9, :]
-    # vrpy_values = x_values[9:12, :]
-
-    # fig, ax = plt.subplots(3, 1)
-    # ax[0].plot(times, np.transpose(u_values)) #  label=["x", "y", "z"])
-    # ax[0].set_ylabel("Position (m)")
-    # ax[0].legend()
-
-    # ax[1].plot(times, np.transpose(xyz_values2), label=["x", "y", "z"])
-    # ax[1].set_ylabel("Position (m)")
-    # ax[1].legend()
-
-    # ax[2].plot(times, np.transpose(xyz_values3), label=["x", "y", "z"])
-    # ax[2].set_ylabel("Position (m)")
-    # ax[2].legend()
-
-    # ax[2].set_xlabel("Time(s)")
-    # plt.show()
 
     return x_traj, u_traj, t_out
 
@@ -410,11 +393,10 @@ def main():
     #sdf_path = 'sdf_models/worlds/default_kintreetest.sdf'
     sdf_path = 'sdf_models/worlds/default_drones.sdf'
     
-    print("Creating multibody system")
     diagram_quad, logger = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
     # Generate example state and input trajectories
-    x_trajectory, u_trajectory, t_out = GenerateDirColTrajectory(diagram_quad)  
+    x_trajectory, u_trajectory, t_out = GenerateDiffFlatTrajectory(diagram_quad)  
         
         # pickle.dump( result.GetSolution(), open( cache_file, "wb" ) )   
         # pickle.dump( x_trajectory, open( "x_traj_time_varying_lqr_circle_3drones.npy", "wb" ) )

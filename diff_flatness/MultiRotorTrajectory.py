@@ -48,22 +48,22 @@ def animate_trajectories(trajectories, legend=None, interval=50):
     if not(legend):
         legend = [f'Trajectory {i}' for i in range(len(trajectories))]
     lines = [ax.plot([], [], [], label=legend[i])[0] for i in range(len(trajectories))]
-    start_points = [ax.scatter([], [], [], color='g') for _ in range(len(trajectories))]
-    end_points = [ax.scatter([], [], [], color='r') for _ in range(len(trajectories))]
+    # start_points = [ax.scatter([], [], [], color='g') for _ in range(len(trajectories))]
+    # end_points = [ax.scatter([], [], [], color='r') for _ in range(len(trajectories))]
 
     def init():
         ax.set_xlim([min(min(traj[0]) for traj in trajectories), max(max(traj[0]) for traj in trajectories)])
         ax.set_ylim([min(min(traj[1]) for traj in trajectories), max(max(traj[1]) for traj in trajectories)])
         ax.set_zlim([min(min(traj[2]) for traj in trajectories), max(max(traj[2]) for traj in trajectories)])
-        return lines + start_points + end_points
+        return lines #+ start_points + end_points
 
     def update(i):
         for j, line in enumerate(lines):
             line.set_data(trajectories[j][0][:i], trajectories[j][1][:i])
             line.set_3d_properties(trajectories[j][2][:i])
-            start_points[j]._offsets3d = (trajectories[j][0][:1], trajectories[j][1][:1], trajectories[j][2][:1])
-            end_points[j]._offsets3d = (trajectories[j][0][i-1:i], trajectories[j][1][i-1:i], trajectories[j][2][i-1:i])
-        return lines + start_points + end_points
+            # start_points[j]._offsets3d = (trajectories[j][0][:1], trajectories[j][1][:1], trajectories[j][2][:1])
+            # end_points[j]._offsets3d = (trajectories[j][0][i-1:i], trajectories[j][1][i-1:i], trajectories[j][2][i-1:i])
+        return lines #+ start_points + end_points
 
     ani = FuncAnimation(fig, update, frames=np.arange(1, len(trajectories[0][0])), init_func=init, blit=True, interval=interval)
     plt.legend()
@@ -384,8 +384,6 @@ class PPTrajectory:
 
 
 
-
-
 ##############################################################################################################################
 # zpp --> [xload, yload, zload, rload, pload, yawLoad, lambda_0, ..., lambda_j, ...,lambda_(3n-5), psi_0, ...,  psi_j, ...   #
 #            0      1      2      3      4       5       6+0     ...,  6+j,     ...,  3n-1           3n   ...,  3n+j , ...   #
@@ -398,9 +396,10 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     enable_delta_u_cost = False
     enable_delta_x_cost = False
     enable_delta_r_cost = False
+    enable_input_limits = False
     seed_solver = True
-    major_tol = 1e-2
-    minor_tol = 1e-2
+    major_tol = 1e-4
+    minor_tol = 1e-4
 
 
     ###############################
@@ -412,6 +411,8 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     # x = zpp.eval(t) 
     # xddot = zpp.eval(t, 2)
     # Tiqi = [0,0,0] # tension vector (acting on quadrotor)
+
+
     ###############################
     #   Constants & Conversions   #
     ###############################
@@ -467,9 +468,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     umax = 10 # maximum commanded thrust
     # used to convert u1 u2 u3 u4 to Tx Ty and Tz
     # assumes vertical rotors with directions ccw, ccw, cw, cw
-    u2m = np.array([[rotor_distances[0][0], rotor_distances[1][0], rotor_distances[2][0], rotor_distances[3][0]], 
-                    [rotor_distances[0][1], rotor_distances[1][1], rotor_distances[2][1], rotor_distances[3][1]],
-                    [moment_ratio, moment_ratio, -moment_ratio, -moment_ratio]])
+    u2m = np.array([[rotor_distances[0][0], rotor_distances[1][0], rotor_distances[2][0], rotor_distances[3][0]], # distances from the X axis
+                    [rotor_distances[0][1], rotor_distances[1][1], rotor_distances[2][1], rotor_distances[3][1]], # distances from the Y axis
+                    [moment_ratio,          moment_ratio,          -moment_ratio,         -moment_ratio]]) # based on the direction of the rotors
 
 
     ###############################
@@ -516,7 +517,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         OmegaL     = one_d[t][3:6]
         OmegadotL  = two_d[t][3:6]
 
-        # Converts load oriention to a rotation matrix
+        # Converts load oriention to a rotation matrix wrt earth
         r_L = rotation_matrix(RL)
 
         assert type(XL) == type(np.array([])), "Error, XL not a numpy array"
@@ -527,13 +528,15 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
         prog.AddLinearConstraint(rpy_i[t], [-max_angle]*3*n, [max_angle]*3*n)
 
-
-        prog.AddLinearConstraint(u[t], [umax/10]*(4*n), [umax]*(4*n))
+        # Drone input limits
+        if (enable_input_limits):
+            prog.AddLinearConstraint(u[t], [-umax]*(4*n), [umax]*(4*n))
 
         for i in range(n):
+
             # Rotation matrix of quadrotor i wrt earth
             r_i = rotation_matrix(rpy_i[t][0+i:3+i])
-            assert r_i.shape == (3,3), "Error, rotation matrix not 3x3 (r_i={r_i})"
+            assert r_i.shape == (3,3), f"Error, rotation matrix not 3x3 (r_i={r_i})"
 
 
             # Tension must pull rotor down (negative z component)
@@ -545,9 +548,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             #########################
             # Kinematic Constraints #
             #########################
-            
-            # rope must remain taut (magnitude = rope_len), and
-            # Tension MUST be parallel to the rope. Proof for constraint as written below:
+            # Tension MUST be parallel to the (massless) rope. Rope must be taut
             # rope_length_vector/||rope_length_vector||  == Tiqi/||Tiqi||
             # rope_length_vector/rope_len                == Tiqi/||Tiqi||
             # rope_length_vector                         == Tiqi/||Tiqi|| * rope_len
@@ -562,7 +563,6 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             ###############################################
             # Drone Velocity and acceleration constraints #
             ###############################################
-
             # Linear
             if (t>0):
                 # Linear position cost
@@ -589,17 +589,19 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             #    Sum of forces on the drones    #
             #####################################
             # m*xddot, m*yddot, m*zddot of drone i
-            lhs_f = m_L*Xddot_i[t][3*i:3*i+3]
+            lhs_f = m[i]*Xddot_i[t][3*i:3*i+3]
             # quadrotor force - gravity + tension force
             #      fi Ri e3  -  mi g e3
-            fi = sum(u[t][4*i:4*i+4]) * thrust_ratio
-            rhs_f = fi * r_i.dot(e3) - m[i]*g*e3 + r_L.dot(Tiqi[t][3*i:3*i+3])
+            fi = sum(u[t][4*i:4*i+4]) * thrust_ratio # thrust of all rotors
+            #  F_rotor (body frame --> earth frame)     - gravity    + tension force (LOAD frame --> earth frame)
+            rhs_f = fi * r_i.dot(e3)                                    - m[i]*g*e3 + r_L.dot(Tiqi[t][3*i:3*i+3])
             assert len(lhs_f) == 3, "Error, lhs_f != 3"
             assert len(rhs_f) == 3, "Error, rhs_f != 3"
             rhs_f = rhs_f.tolist()
             lhs_f = lhs_f.tolist()
             for j in range(len(lhs_f)):
                 prog.AddConstraint(lhs_f[j] == rhs_f[j])
+
 
             #####################################
             #    Sum of moments on the drones   #
@@ -623,8 +625,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
         lhs_f = m_L*XddotL
         tension = 0
         for i in range(n):
-            tension += r_L.dot(Tiqi[t][3*i:3*i+3]) #re-orient tension 
-        rhs_f = -tension - m_L*g*e3 #change direction of the tension, add gravity
+            tension += r_L.dot(Tiqi[t][3*i:3*i+3]) #re-orient tension from load frame to earth frame
+        assert len(tension) == 3, "Error, tension != 3"
+        rhs_f = -tension - m_L*g*e3 #change direction of the tension vectors (acting on drone --> now acting on load), add gravity
         rhs_f = rhs_f.tolist()
         lhs_f = lhs_f.tolist()
         assert len(lhs_f) == 3, "Error, load lhs_f != 3"
@@ -669,9 +672,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     #            0      1      2      3      4       5       6+0     ...,  6+j,     ...,  3n-1           3n   ...,  3n+j , ...   #
     ##############################################################################################################################
     
-    dist_offset = np.matrix([[0,  0,  rope_len],
-                        [0,  0,  rope_len],
-                        [0,  0,  rope_len]])
+    # init_guess = np.matrix([[0,  0,  rope_len],
+    #                         [0,  0,  rope_len],
+    #                         [0,  0,  rope_len]])
 
 
     cache_file = f"n_rotor_states_{tcount}steps_{dt}dt.npy"
@@ -755,10 +758,35 @@ if __name__ == "__main__":
     plot_trajectories_3d(trajectories_3d, legend=legend)
     animate_trajectories(trajectories_3d, legend=legend)
 
-    # trajectories_2d=[[x_L[:-2,0], x_L[:-2,1]], [x_i[:-2,0], x_i[:-2,1]], [x_i[:-2,3], x_i[:-2,4]], [x_i[:-2,6], x_i[:-2,7]]]
-    # plot_multiple_flat_trajectories(trajectories_2d, title="Trajectories", xlabel="X (m)", ylabel="Y (m)", legend=["Load","Drone 0","Drone 1","Drone 2"])
 
+    x_axis=0 # plots 0, (x) on the x axis
+    y_axis=1 # plots 1, (y) on the y axis
+    trajectories_2d=[ [x_L[:-2,x_axis], x_L[:-2,y_axis]], [x_i[:-2,x_axis], x_i[:-2,y_axis]], [x_i[:-2,x_axis+3], x_i[:-2,y_axis+3]], [x_i[:-2,x_axis+6], x_i[:-2,y_axis+6]]]
+    plot_multiple_flat_trajectories(trajectories_2d, title="Trajectories", xlabel="X (m)", ylabel="Y (m)", legend=["Load","Drone 0","Drone 1","Drone 2"])
+
+
+    x_axis=0 #plots 0, (x) on the x axis
+    y_axis=2 #plots 2, (z) on the y axis
+    trajectories_2d=[ [x_L[:-2,x_axis], x_L[:-2,y_axis]], [x_i[:-2,x_axis], x_i[:-2,y_axis]], [x_i[:-2,x_axis+3], x_i[:-2,y_axis+3]], [x_i[:-2,x_axis+6], x_i[:-2,y_axis+6]]]
+    plot_multiple_flat_trajectories(trajectories_2d, title="Trajectories", xlabel="X (m)", ylabel="Z (m)", legend=["Load","Drone 0","Drone 1","Drone 2"])
+
+
+    # x_axis=0
+    # y_axis=1
+    # trajectories_2d=[ [x_L[:-2,x_axis], x_L[:-2,y_axis]], [x_i[:-2,x_axis], x_i[:-2,y_axis]], [x_i[:-2,x_axis+3], x_i[:-2,y_axis+3]], [x_i[:-2,x_axis+6], x_i[:-2,y_axis+6]]]
+    # plot_multiple_flat_trajectories(trajectories_2d, title="Trajectories", xlabel="Y (m)", ylabel="Z (m)", legend=["Load","Drone 0","Drone 1","Drone 2"])
+
+    anchor_points = 0.5 * np.array([ np.array([ 0,  1,  1]),
+                                    np.array([-1, -1,  1]),
+                                    np.array([-1,  1,  1])])
     
+
+    x_rel_0 = x_i[:,0:3] - x_L[:,0:3] - anchor_points[0]
+    x_rel_1 = x_i[:,3:6] - x_L[:,0:3] - anchor_points[1]
+    x_rel_2 = x_i[:,6:9] - x_L[:,0:3] - anchor_points[2]
+
+
+
     plot_trajectories(rpy_i[:,0:3], legend=["Roll","Pitch","Yaw"], title="Drone 0 Orientation", ylabel="Angle (rad)")
     print("rpy_1")
     plot_trajectories(rpy_i[:,3:6], legend=["Roll","Pitch","Yaw"], title="Drone 1 Orientation", ylabel="Angle (rad)")
@@ -766,22 +794,25 @@ if __name__ == "__main__":
     plot_trajectories(rpy_i[:,6:9], legend=["Roll","Pitch","Yaw"], title="Drone 2 Orientation", ylabel="Angle (rad)")
     print("TiQi 1")
     plot_trajectories(Tiqi[:-2,0:3], title="Drone 0 Tension Vector", ylabel="Tension (N)")
+    plot_trajectories(x_rel_0[:-2,0:3])
     print("TiQi 2")
     plot_trajectories(Tiqi[:-2,3:6], title="Drone 1 Tension Vector", ylabel="Tension (N)")
+    plot_trajectories(x_rel_1[:-2,0:3])
     print("TiQi 3")
     plot_trajectories(Tiqi[:-2,6:9], title="Drone 2 Tension Vector", ylabel="Tension (N)")
+    plot_trajectories(x_rel_2[:-2,0:3])
+    plot_trajectories([i / j for i, j in zip(x_rel_2[:-2,0:3], Tiqi[:-2,6:9])])
     print("u 1")
-    plot_trajectories(u_out[:,0:4], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 0 Rotor Forces", ylabel="Force (N)")
+    plot_trajectories(u_out[1:,0:4], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 0 Rotor Forces", ylabel="Force (N)")
     print("u 2")
-    plot_trajectories(u_out[:,4:8], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 1 Rotor Forces", ylabel="Force (N)")
+    plot_trajectories(u_out[1:,4:8], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 1 Rotor Forces", ylabel="Force (N)")
     print("u 3")
-    plot_trajectories(u_out[:,8:12], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 2 Rotor Forces", ylabel="Force (N)")
+    plot_trajectories(u_out[1:,8:12], legend=["Rotor 1","Rotor 2","Rotor 3","Rotor 4"], title="Drone 2 Rotor Forces", ylabel="Force (N)")
 
 
 
 
-
-    # plot_flat_trajectory(x_L[:-2,0], x_L[:-2,1], title="Load Trajectory", xlabel="X (m)", ylabel="Y (m)")
+    plot_flat_trajectory(x_L[:-2,0], x_L[:-2,1], title="Load Trajectory", xlabel="X (m)", ylabel="Y (m)")
     # plot_flat_trajectory(x_i[:-2,0], x_i[:-2,1], title="Drone 0 Trajectory", xlabel="X (m)", ylabel="Y (m)")
     # plot_flat_trajectory(x_i[:-2,3], x_i[:-2,4], title="Drone 1 Trajectory", xlabel="X (m)", ylabel="Y (m)")
     # plot_flat_trajectory(x_i[:-2,6], x_i[:-2,7], title="Drone 2 Trajectory", xlabel="X (m)", ylabel="Y (m)")
