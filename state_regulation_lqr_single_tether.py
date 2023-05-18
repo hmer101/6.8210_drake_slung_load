@@ -145,8 +145,8 @@ def MakeQuadrotorController(diagram_plant):
         ## Set plant at linearization point
         # States (Note states for tethers, load and reference link are also required
 
-        state_0 = [-2.0, -2.0, 3.0, 0.0, 0.0, 0.0, 
-                   0.0, 0.0, 0.0,
+        state_0 = [2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 
+                   0.0, np.pi, 0.0,
                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
         # state_0 = [0.0, 2.0, 2.0, 0.0, 0.0, 0.0,
@@ -173,7 +173,7 @@ def MakeQuadrotorController(diagram_plant):
         # print(f'Drone mass: {single_drone_mass}')
         # print(f'Load mass: {load_mass}')
 
-        diagram_plant.get_input_port().FixValue(diagram_context, (single_drone_mass+0.1) * g / 4. * np.array([1, 1, 1, 1]))
+        diagram_plant.get_input_port().FixValue(diagram_context, (single_drone_mass+0.01) * g / 4. * np.array([1, 1, 1, 1]))
         #diagram_plant.get_input_port().FixValue(diagram_context, single_drone_mass * g / 4. * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])) #.FixValue(diagram_context, single_drone_mass * g / 4. * np.ones(input_dim)) # TODO: U0 Different for when carrying load probably
 
 
@@ -261,7 +261,7 @@ def main():
     # Make Quadrotor
     #sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default.sdf'
-    sdf_path = 'sdf_models/worlds/default_drones_1.sdf'
+    sdf_path = 'sdf_models/worlds/default_1drone_tether_Ryan.sdf'
     
     diagram_quad = MakeMultibodyQuadrotor(sdf_path, meshcat)
 
@@ -269,7 +269,7 @@ def main():
     # utils.show_diagram(diagram_quad)
 
     # Make controller
-    # diagram_full = MakeQuadrotorController(diagram_quad)
+    diagram_full = MakeQuadrotorController(diagram_quad)
 
     # Show diagram
     # utils.show_diagram(diagram_full)
@@ -283,14 +283,10 @@ def main():
     # ^^ Velocities for the above?? Hopefully same order
     
     state_init_test = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
-                       np.pi, 0.0, 0.0, 
+                       0.0, np.pi, 0.0, 
                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-    # state_init_test = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    #                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-
-    utils.simulate_diagram(diagram_quad, state_init_test, meshcat, realtime_rate=0.75)
+    utils.simulate_diagram(diagram_full, state_init_test, meshcat, realtime_rate=0.75)
 
 
 if __name__ == "__main__":
