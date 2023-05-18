@@ -346,7 +346,7 @@ def main():
     # Make Quadrotor
     # sdf_path = 'sdf_models/models/x500/model.sdf'
     #sdf_path = 'sdf_models/worlds/default_kintreetest.sdf'
-    sdf_path = 'sdf_models/worlds/default_drones.sdf'
+    sdf_path = 'sdf_models/worlds/default_3drones_Ryan.sdf'
     
     print("Creating multibody system", end="...")
     diagram_quad, logger = MakeMultibodyQuadrotor(sdf_path, meshcat)
