@@ -393,6 +393,8 @@ class PPTrajectory:
 def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     print(f"solving states for {n} quadrotors using {timesteps} timesteps with tf={tf}")
 
+    # costs to attempt to smooth the trajectory
+    # adds a cost on (x[t-1]-x[t])/dt - xdot[t] to encourage a first-order hold
     enable_delta_u_cost = False
     enable_delta_x_cost = False
     enable_delta_r_cost = False
@@ -427,11 +429,11 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     ###############################
 
     # distance from anchor point to drone
-    rope_len = 0.174  # Length for arms (m)
+    rope_len = 3.0 # m
     # vectors from the load's COM to the anchor point
-    anchor_points = 0.5 * np.array([ np.array([ 0,  1,  1]),
+    anchor_points = 1 * np.array([ np.array([ 0,  1,  1]),
                                     np.array([-1, -1,  1]),
-                                    np.array([-1,  1,  1])])
+                                    np.array([1,  -1,  1])])
     
     # 3D vector distances from drone's COM to each rotor's COM (from sdf_models/x500/model.sdf)
     rotor_distances = np.array([np.array([-0.174, -0.174, 0.06]),np.array([-0.174, 0.174, 0.06]),np.array([0.174, 0.174, 0.06]),np.array([0.174, -0.174, 0.06])])
@@ -445,14 +447,16 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
     # total mass of the drone
     m = [m_rotor*4+m_base]*n
     # inertia of the drone's body using parallel axis theorem
-    J_drone = [J_base[0]+m_rotor*rotor_distances[0][0]**2, J_base[1]+m_rotor*rotor_distances[0][1]**2, J_base[2]+m_rotor*rotor_distances[0][2]**2]
+    J_drone = [J_base[0]+m_rotor*rotor_distances[0][0]**2 + J_rotors[0], J_base[1]+m_rotor*rotor_distances[0][1]**2 + J_rotors[1], J_base[2]+m_rotor*rotor_distances[0][2]**2 + J_rotors[2]]
     J = []
     for i in range(n):
         J.append(np.diag(J_drone)) # quadrotor inertia (copied from model.sdf)
     
     # load mass & inertia (semi-arbitrary for now)
-    m_L = 1.0 # load mass
+    m_L = 10.0 # load mass
     J_L = np.diag(J_drone)*m_L/m[0]
+
+    print(J_L)
 
     # Rotor positions & directions
     #
@@ -539,11 +543,6 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             assert r_i.shape == (3,3), f"Error, rotation matrix not 3x3 (r_i={r_i})"
 
 
-            # Tension must pull rotor down (negative z component)
-            # prog.AddLinearConstraint(Tiqi[t][3*i:3*i+3], [-100000,-100000,-100000], [100000,100000,5])
-            # prog.AddLinearConstraint(Tiqi[t][3*i+2:3*i+3], [-100000], [0])
-            # prog.AddQuadraticCost((Tiqi[t][3*i+2]-m_L*g/n)**2)
-
 
             #########################
             # Kinematic Constraints #
@@ -552,7 +551,7 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             # rope_length_vector/||rope_length_vector||  == Tiqi/||Tiqi||
             # rope_length_vector/rope_len                == Tiqi/||Tiqi||
             # rope_length_vector                         == Tiqi/||Tiqi|| * rope_len
-            rope_length_vector = X_i[t][3*i:3*i+3] - (XL + anchor_points[i])
+            rope_length_vector = -X_i[t][3*i:3*i+3] + (XL + r_L.dot(anchor_points[i]))
             qi = Tiqi[t][3*i:3*i+3]/np.linalg.norm(Tiqi[t][3*i:3*i+3])
             lhs_dist = (qi*rope_len).tolist()
             rhs_dist = rope_length_vector.tolist()
@@ -561,7 +560,10 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
 
 
             ###############################################
-            # Drone Velocity and acceleration constraints #
+            # Drone Velocity and acceleration costs       #
+            #   not constraints because they shouldn't    # 
+            #   be required. Just help the solver make    #
+            #   smoother trajectories                     #
             ###############################################
             # Linear
             if (t>0):
@@ -593,8 +595,8 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             # quadrotor force - gravity + tension force
             #      fi Ri e3  -  mi g e3
             fi = sum(u[t][4*i:4*i+4]) * thrust_ratio # thrust of all rotors
-            #  F_rotor (body frame --> earth frame)     - gravity    + tension force (LOAD frame --> earth frame)
-            rhs_f = fi * r_i.dot(e3)                                    - m[i]*g*e3 + r_L.dot(Tiqi[t][3*i:3*i+3])
+            #      F_rotor (body frame --> earth frame)     - gravity    + tension force (LOAD frame --> earth frame)
+            rhs_f = fi * r_i.dot(e3)                       - m[i]*g*e3   + r_L.dot(Tiqi[t][3*i:3*i+3])
             assert len(lhs_f) == 3, "Error, lhs_f != 3"
             assert len(rhs_f) == 3, "Error, rhs_f != 3"
             rhs_f = rhs_f.tolist()
@@ -659,9 +661,9 @@ def solve_for_states_n_rotors(zpp, n, tf, timesteps):
             # [Tx_0    Ty_0    Tz_0   Tx_1 ... Tx_n   Ty_n   Tz_n]
             #   0        1       2      3  ... 3n+0   3n+1   3n+2
         # if (n == 3):
-            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+0]) # x of copter 0
-            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+1]) # y of copter 0
-            # prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*1+0]) # x of copter 1
+        #     prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+0]) # lambda0 = Tx of copter 0
+        #     prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*0+1]) # lambda1 = Ty of copter 0
+        #     prog.AddConstraint(lambda_m[t][i] == Tiqi[t][3*1+0]) # lambda2 = Tx of copter 1
 
 
     # END OF LOOP THRU EACH TIMESTEP
