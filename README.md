@@ -1,4 +1,4 @@
-# 6.8210_project
+# Multi-Quadrotor Slung Load Carrying in Drake
 
 Final project for MIT's class 6.8210 - Underactuated Robotics. 
 
