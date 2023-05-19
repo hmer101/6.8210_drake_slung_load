@@ -1,5 +1,6 @@
 # 6.8210_project
 
-Link to the quadrotor example (with an LQR):
-https://deepnote.com/workspace/Underactuated-2ed1518a-973b-4145-bd62-1768b49956a8/project/03-Acrobots-Cart-Poles-and-Quadrotors-096cffe7-416e-4d51-a471-5fd526ec8fab/notebook/acrobot-229d29e61b5b44cabccbc7ac3dd59881
+Final project for MIT's class 6.8210 - Underactuated Robotics. 
+
+Differential flatness code is contained in the 'diff flatness' folder. All other code relates to single and multi-drone state regulation and trajectory stabilization/time-varying LQR cases as indicated by file names. Multiple files are deliberately used to allow multiple streams of debugging while maintaining functioning code for earlier "checkpoints" discussed in the report. Code remains "uncleaned" as debugging and development is still active.
 
